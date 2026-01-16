@@ -5,6 +5,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/auth");
 const tasksRoutes = require("./routes/tasks");
 const dailyLogsRoutes = require("./routes/dailyLogs");
+const adminRoutes = require("./routes/admin");
 
 const app = express();
 app.use(cors());
@@ -18,6 +19,7 @@ app.get("/health", (req, res) => {
 app.use("/auth", authRoutes);
 app.use("/tasks", tasksRoutes);
 app.use("/daily-logs", dailyLogsRoutes);
+app.use("/admin", adminRoutes);
 
 // Start server LAST
 const PORT = process.env.PORT || 3001;
