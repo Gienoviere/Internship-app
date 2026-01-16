@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 enum Role {
   ADMIN
   USER
@@ -22,4 +21,17 @@ model User {
   role         Role     @default(USER)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  category    String?      // e.g., "Feeding", "Cleaning", "Health"
+  isDaily     Boolean  @default(true)
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
