@@ -1,5 +1,8 @@
-const requireAuth = require("../middleware/requireAuth");
+const express = require("express");
 const prisma = require("../prisma");
+const requireAuth = require("../middleware/requireAuth");
+
+const router = express.Router();
 
 function isValidISODateOnly(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
@@ -10,6 +13,7 @@ function toDateOnlyUTC(dateStr) {
   return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
 }
 
+// GET /tasks/today?date=YYYY-MM-DD
 router.get("/today", requireAuth, async (req, res) => {
   try {
     const date = req.query.date;
@@ -38,9 +42,6 @@ router.get("/today", requireAuth, async (req, res) => {
         taskId: t.id,
         taskName: t.name,
         category: t.category,
-        isDaily: t.isDaily,
-        active: t.active,
-        // Whether THIS user has logged it today
         logged: Boolean(log),
         completed: log ? log.completed : false,
         quantityGrams: log ? log.quantityGrams : null,
@@ -55,3 +56,5 @@ router.get("/today", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+
+module.exports = router;

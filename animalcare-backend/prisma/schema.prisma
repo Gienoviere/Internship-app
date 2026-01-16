@@ -57,3 +57,50 @@ model DailyLog {
   @@index([date])
   @@unique([date, taskId, userId]) // prevent duplicate log entries for same task/user/day
 }
+
+model FeedItem {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique       // e.g., "Pig Feed"
+  unit         String   @default("g")  // store as grams internally
+  reorderRule  String?                // free text: "Chicken feed only per 25 bags of 20kg"
+  minOrderKg   Int?                   // e.g. 500 (for other feed)
+  active       Boolean  @default(true)
+
+  stockGrams   Int      @default(0)    // current stock in grams
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
+
+  rations      FeedRation[]
+  movements    InventoryMovement[]
+}
+
+model FeedRation {
+  id            Int      @id @default(autoincrement())
+  feedItemId    Int
+  species       String   // e.g., "pig"
+  gramsPerAnimalPerDay Int
+  animalCount   Int      @default(1)
+
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  feedItem      FeedItem @relation(fields: [feedItemId], references: [id])
+
+  @@index([species])
+}
+
+model InventoryMovement {
+  id         Int      @id @default(autoincrement())
+  feedItemId Int
+  date       DateTime // UTC day
+  deltaGrams Int      // negative = used, positive = restock
+  reason     String   // "daily-log", "manual-adjust", "delivery"
+  refType    String?  // e.g. "DailyLog"
+  refId      Int?     // log id when reason=daily-log
+  userId     Int?
+
+  createdAt  DateTime @default(now())
+
+  feedItem   FeedItem @relation(fields: [feedItemId], references: [id])
+}

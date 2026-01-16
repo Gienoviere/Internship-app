@@ -4,6 +4,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const tasksRoutes = require("./routes/tasks");
+const taskStatusRoutes = require("./routes/taskStatus");
 const dailyLogsRoutes = require("./routes/dailyLogs");
 const adminRoutes = require("./routes/admin");
 
@@ -18,6 +19,7 @@ app.get("/health", (req, res) => {
 // Routes
 app.use("/auth", authRoutes);
 app.use("/tasks", tasksRoutes);
+app.use("/tasks", taskStatusRoutes);
 app.use("/daily-logs", dailyLogsRoutes);
 app.use("/admin", adminRoutes);
 
