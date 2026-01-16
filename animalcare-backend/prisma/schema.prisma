@@ -21,6 +21,8 @@ model User {
   role         Role     @default(USER)
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
+  logs DailyLog[]
+
 }
 
 model Task {
@@ -34,4 +36,24 @@ model Task {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  logs DailyLog[]
+}
+
+model DailyLog {
+  id           Int      @id @default(autoincrement())
+  date         DateTime // store day as YYYY-MM-DD at 00:00:00 (we'll normalize)
+  completed    Boolean  @default(true)
+  quantityGrams Int?
+  notes        String?
+
+  taskId       Int
+  userId       Int
+  task         Task     @relation(fields: [taskId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([date])
+  @@unique([date, taskId, userId]) // prevent duplicate log entries for same task/user/day
 }
