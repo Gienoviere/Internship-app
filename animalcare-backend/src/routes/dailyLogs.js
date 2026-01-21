@@ -74,7 +74,7 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "taskId must be an integer" });
     }
 
-    // Optional: ensure task exists and is active
+    // Ensure task exists and is active
     const task = await prisma.task.findUnique({ where: { id: tId } });
     if (!task) return res.status(404).json({ error: "Task not found" });
     if (!task.active) return res.status(400).json({ error: "Task is inactive" });
@@ -85,36 +85,100 @@ router.post("/", requireAuth, async (req, res) => {
         : Number(quantityGrams);
 
     if (q !== null && (!Number.isFinite(q) || q < 0)) {
-      return res.status(400).json({ error: "quantityGrams must be a non-negative number" });
+      return res
+        .status(400)
+        .json({ error: "quantityGrams must be a non-negative number" });
     }
 
-    const log = await prisma.dailyLog.upsert({
-      where: {
-        date_taskId_userId: {
+    const newQty = q === null ? 0 : Math.round(q);
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Find existing log so we can compute inventory delta when user edits quantity
+      const existing = await tx.dailyLog.findUnique({
+        where: {
+          date_taskId_userId: {
+            date: day,
+            taskId: tId,
+            userId: req.user.userId,
+          },
+        },
+      });
+
+      const oldQty = existing?.quantityGrams ? existing.quantityGrams : 0;
+
+      // Upsert log
+      const log = await tx.dailyLog.upsert({
+        where: {
+          date_taskId_userId: {
+            date: day,
+            taskId: tId,
+            userId: req.user.userId,
+          },
+        },
+        create: {
           date: day,
           taskId: tId,
           userId: req.user.userId,
+          completed: completed === undefined ? true : Boolean(completed),
+          quantityGrams: newQty === 0 ? null : newQty,
+          notes: notes ? String(notes) : null,
         },
-      },
-      create: {
-        date: day,
-        taskId: tId,
-        userId: req.user.userId,
-        completed: completed === undefined ? true : Boolean(completed),
-        quantityGrams: q === null ? null : Math.round(q),
-        notes: notes ? String(notes) : null,
-      },
-      update: {
-        completed: completed === undefined ? true : Boolean(completed),
-        quantityGrams: q === null ? null : Math.round(q),
-        notes: notes ? String(notes) : null,
-      },
-      include: {
-        task: { select: { id: true, name: true, category: true } },
-      },
+        update: {
+          completed: completed === undefined ? true : Boolean(completed),
+          quantityGrams: newQty === 0 ? null : newQty,
+          notes: notes ? String(notes) : null,
+        },
+        include: {
+          task: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              affectsInventory: true,
+              feedItemId: true,
+            },
+          },
+        },
+      });
+
+      // Inventory adjustment
+      let inventory = null;
+
+      if (log.task.affectsInventory && log.task.feedItemId) {
+        const consumedChange = newQty - oldQty; // + means more consumption than before
+        if (consumedChange !== 0) {
+          const movementDelta = -consumedChange; // stock change (consume = negative)
+
+          const item = await tx.feedItem.findUnique({
+            where: { id: log.task.feedItemId },
+          });
+          if (!item) throw new Error("FeedItem mapped on task not found");
+
+          const movement = await tx.inventoryMovement.create({
+            data: {
+              feedItemId: item.id,
+              date: day,
+              deltaGrams: movementDelta,
+              reason: "daily-log",
+              refType: "DailyLog",
+              refId: log.id,
+              userId: req.user.userId,
+            },
+          });
+
+          const updatedItem = await tx.feedItem.update({
+            where: { id: item.id },
+            data: { stockGrams: item.stockGrams + movementDelta },
+          });
+
+          inventory = { movement, feedItem: updatedItem };
+        }
+      }
+
+      return { log, inventory };
     });
 
-    res.status(201).json(log);
+    res.status(201).json(result);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });

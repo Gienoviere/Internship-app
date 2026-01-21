@@ -63,7 +63,7 @@ router.patch("/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid id" });
 
-    const { name, description, category, isDaily, sortOrder, active } = req.body;
+    const { name, description, category, isDaily, sortOrder, active, affectsInventory, feedItemId } = req.body;
 
     const task = await prisma.task.update({
       where: { id },
@@ -74,6 +74,8 @@ router.patch("/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
         ...(isDaily !== undefined ? { isDaily: Boolean(isDaily) } : {}),
         ...(sortOrder !== undefined ? { sortOrder: Number(sortOrder) } : {}),
         ...(active !== undefined ? { active: Boolean(active) } : {}),
+        ...(affectsInventory !== undefined ? { affectsInventory: Boolean(affectsInventory) } : {}),
+        ...(feedItemId !== undefined ? { feedItemId: feedItemId === null ? null : Number(feedItemId) } : {}),
       },
     });
 

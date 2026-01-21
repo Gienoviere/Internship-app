@@ -14,78 +14,83 @@ enum Role {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
+  id           Int        @id @default(autoincrement())
   name         String
-  email        String   @unique
+  email        String     @unique
   passwordHash String
-  role         Role     @default(USER)
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  logs DailyLog[]
-
+  role         Role       @default(USER)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  logs         DailyLog[]
 }
 
 model Task {
-  id          Int      @id @default(autoincrement())
+  id          Int     @id @default(autoincrement())
   name        String
   description String?
-  category    String?      // e.g., "Feeding", "Cleaning", "Health"
-  isDaily     Boolean  @default(true)
-  active      Boolean  @default(true)
-  sortOrder   Int      @default(0)
+  category    String?
+  isDaily     Boolean @default(true)
+  active      Boolean @default(true)
+  sortOrder   Int     @default(0)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  affectsInventory Boolean   @default(false)
+  feedItemId       Int?
+  feedItem         FeedItem? @relation(fields: [feedItemId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   logs DailyLog[]
 }
 
 model DailyLog {
-  id           Int      @id @default(autoincrement())
-  date         DateTime // store day as YYYY-MM-DD at 00:00:00 (we'll normalize)
-  completed    Boolean  @default(true)
+  id            Int      @id @default(autoincrement())
+  date          DateTime // store day as YYYY-MM-DD at 00:00:00 (we'll normalize)
+  completed     Boolean  @default(true)
   quantityGrams Int?
-  notes        String?
+  notes         String?
 
-  taskId       Int
-  userId       Int
-  task         Task     @relation(fields: [taskId], references: [id])
-  user         User     @relation(fields: [userId], references: [id])
+  taskId Int
+  userId Int
+  task   Task @relation(fields: [taskId], references: [id])
+  user   User @relation(fields: [userId], references: [id])
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([date])
   @@unique([date, taskId, userId]) // prevent duplicate log entries for same task/user/day
+  @@index([date])
 }
 
 model FeedItem {
-  id           Int      @id @default(autoincrement())
-  name         String   @unique       // e.g., "Pig Feed"
-  unit         String   @default("g")  // store as grams internally
-  reorderRule  String?                // free text: "Chicken feed only per 25 bags of 20kg"
-  minOrderKg   Int?                   // e.g. 500 (for other feed)
-  active       Boolean  @default(true)
+  id          Int     @id @default(autoincrement())
+  name        String  @unique // e.g., "Pig Feed"
+  unit        String  @default("g") // store as grams internally
+  reorderRule String? // free text: "Chicken feed only per 25 bags of 20kg"
+  minOrderKg  Int? // e.g. 500 (for other feed)
+  active      Boolean @default(true)
 
-  stockGrams   Int      @default(0)    // current stock in grams
-  updatedAt    DateTime @updatedAt
-  createdAt    DateTime @default(now())
+  stockGrams Int      @default(0) // current stock in grams
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
 
-  rations      FeedRation[]
-  movements    InventoryMovement[]
+  tasks     Task[]
+  rations   FeedRation[]
+  movements InventoryMovement[]
 }
 
 model FeedRation {
-  id            Int      @id @default(autoincrement())
-  feedItemId    Int
-  species       String   // e.g., "pig"
+  id                   Int    @id @default(autoincrement())
+  feedItemId           Int
+  species              String // e.g., "pig"
   gramsPerAnimalPerDay Int
-  animalCount   Int      @default(1)
+  animalCount          Int    @default(1)
 
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  feedItem      FeedItem @relation(fields: [feedItemId], references: [id])
+  feedItem FeedItem @relation(fields: [feedItemId], references: [id])
 
   @@index([species])
 }
@@ -93,14 +98,17 @@ model FeedRation {
 model InventoryMovement {
   id         Int      @id @default(autoincrement())
   feedItemId Int
-  date       DateTime // UTC day
-  deltaGrams Int      // negative = used, positive = restock
-  reason     String   // "daily-log", "manual-adjust", "delivery"
-  refType    String?  // e.g. "DailyLog"
-  refId      Int?     // log id when reason=daily-log
+  date       DateTime
+  deltaGrams Int
+  reason     String
+  refType    String?
+  refId      Int?
   userId     Int?
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  feedItem   FeedItem @relation(fields: [feedItemId], references: [id])
+  feedItem FeedItem @relation(fields: [feedItemId], references: [id])
+
+  @@index([date])
+  @@index([feedItemId])
 }

@@ -7,6 +7,8 @@ const tasksRoutes = require("./routes/tasks");
 const taskStatusRoutes = require("./routes/taskStatus");
 const dailyLogsRoutes = require("./routes/dailyLogs");
 const adminRoutes = require("./routes/admin");
+const inventoryRoutes = require("./routes/inventory");
+
 
 const app = express();
 app.use(cors());
@@ -22,6 +24,7 @@ app.use("/tasks", tasksRoutes);
 app.use("/tasks", taskStatusRoutes);
 app.use("/daily-logs", dailyLogsRoutes);
 app.use("/admin", adminRoutes);
+app.use("/inventory", inventoryRoutes);
 
 // Start server LAST
 const PORT = process.env.PORT || 3001;
