@@ -67,10 +67,13 @@ model FeedItem {
   name        String  @unique // e.g., "Pig Feed"
   unit        String  @default("g") // store as grams internally
   reorderRule String? // free text: "Chicken feed only per 25 bags of 20kg"
-  minOrderKg  Int? // e.g. 500 (for other feed)
   active      Boolean @default(true)
 
   stockGrams Int      @default(0) // current stock in grams
+
+  minOrderKg      Int?     // e.g. 500
+  orderMultipleKg Int?     // e.g. 500 (must order in multiples of this)
+
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
 

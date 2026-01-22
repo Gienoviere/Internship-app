@@ -115,3 +115,123 @@ router.get("/daily-overview", requireAuth, requireRole(["ADMIN"]), async (req, r
 });
 
 module.exports = router;
+
+// Helpers (if you already have these in admin.js, reuse them)
+function toDateOnlyUTC(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
+}
+function addDaysUTC(dateObj, days) {
+  return new Date(dateObj.getTime() + days * 24 * 60 * 60 * 1000);
+}
+
+/**
+ * GET /admin/inventory-warnings?lookbackDays=14&warnDays=21&criticalDays=7
+ * Admin-only: estimates days remaining based on recent consumption movements.
+ *
+ * Uses InventoryMovement:
+ * - reason="daily-log"
+ * - deltaGrams negative => consumption
+ */
+router.get(
+  "/inventory-warnings",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  async (req, res) => {
+    try {
+      const lookbackDays = Math.max(3, Math.min(60, Number(req.query.lookbackDays ?? 14)));
+      const warnDays = Math.max(1, Math.min(365, Number(req.query.warnDays ?? 21)));
+      const criticalDays = Math.max(1, Math.min(warnDays, Number(req.query.criticalDays ?? 7)));
+
+      // We’ll use UTC "today" at midnight
+      const now = new Date();
+      const todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+      const startUTC = addDaysUTC(todayUTC, -lookbackDays);
+
+      // 1) Get all active feed items
+      const items = await prisma.feedItem.findMany({
+        where: { active: true },
+        orderBy: [{ name: "asc" }],
+        select: { id: true, name: true, stockGrams: true, reorderRule: true },
+      });
+
+      // 2) Get consumption movements in lookback window (daily-log only)
+      const moves = await prisma.inventoryMovement.findMany({
+        where: {
+          reason: "daily-log",
+          date: { gte: startUTC, lte: todayUTC },
+        },
+        select: { feedItemId: true, date: true, deltaGrams: true },
+      });
+
+      // Group consumption by feedItemId and by date
+      // We want average DAILY consumption (in grams/day)
+      const byItem = new Map(); // feedItemId -> Map(dateISO -> gramsConsumed)
+      for (const m of moves) {
+        if (m.deltaGrams >= 0) continue; // only consumption
+        const dayKey = m.date.toISOString().slice(0, 10); // YYYY-MM-DD
+        const consumed = -m.deltaGrams; // convert to positive grams consumed
+
+        if (!byItem.has(m.feedItemId)) byItem.set(m.feedItemId, new Map());
+        const byDay = byItem.get(m.feedItemId);
+        byDay.set(dayKey, (byDay.get(dayKey) ?? 0) + consumed);
+      }
+
+      const results = items.map((it) => {
+        const perDay = byItem.get(it.id) || new Map();
+        const daysWithData = perDay.size;
+
+        // Total consumed in lookback window (only days we have entries for)
+        let totalConsumed = 0;
+        for (const v of perDay.values()) totalConsumed += v;
+
+        // Two possible averages:
+        // A) avg over days with data (good when logs are consistent)
+        // B) avg over full lookback window (more conservative if logging is spotty)
+        //
+        // We'll use B so you still get a warning even if someone skipped logging a day.
+        const avgDailyConsumed = totalConsumed / lookbackDays;
+
+        let status = "INSUFFICIENT_DATA";
+        let daysRemaining = null;
+
+        if (totalConsumed === 0) {
+          status = "NO_CONSUMPTION";
+        } else if (avgDailyConsumed > 0) {
+          daysRemaining = it.stockGrams / avgDailyConsumed;
+
+          if (daysRemaining <= criticalDays) status = "CRITICAL";
+          else if (daysRemaining <= warnDays) status = "WARN";
+          else status = "OK";
+        }
+
+        return {
+          feedItemId: it.id,
+          name: it.name,
+          stockGrams: it.stockGrams,
+          reorderRule: it.reorderRule,
+          lookbackDays,
+          daysWithConsumptionEntries: daysWithData,
+          totalConsumedGrams: Math.round(totalConsumed),
+          avgDailyConsumedGrams: Math.round(avgDailyConsumed),
+          estimatedDaysRemaining: daysRemaining === null ? null : Math.round(daysRemaining * 10) / 10, // 1 decimal
+          status,
+        };
+      });
+
+      // Sort by “worst” first
+      const order = { CRITICAL: 0, WARN: 1, OK: 2, NO_CONSUMPTION: 3, INSUFFICIENT_DATA: 4 };
+      results.sort((a, b) => (order[a.status] ?? 99) - (order[b.status] ?? 99));
+
+      res.json({
+        asOfDateUTC: todayUTC.toISOString().slice(0, 10),
+        params: { lookbackDays, warnDays, criticalDays },
+        items: results,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
