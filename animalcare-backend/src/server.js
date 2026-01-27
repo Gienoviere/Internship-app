@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-require("./cron/inventoryWarningsCron");
+require("./cron/inventoryWarningsCron"); 
 
 const authRoutes = require("./routes/auth");
 const tasksRoutes = require("./routes/tasks");
