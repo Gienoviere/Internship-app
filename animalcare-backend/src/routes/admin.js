@@ -232,3 +232,55 @@ router.get("/inventory-warnings", requireAuth, requireRole(["ADMIN"]), async (re
     }
   }
 );
+
+//Warning system voor admin
+function isValidISODateOnly(s) {
+  return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
+}
+
+function toDateOnlyUTC(dateStr) {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
+}
+
+// GET /admin/missed-tasks?date=YYYY-MM-DD
+router.get(
+  "/missed-tasks",
+  requireAuth,
+  requireRole(["ADMIN"]),
+  async (req, res) => {
+    try {
+      const { date } = req.query;
+      if (!isValidISODateOnly(date)) {
+        return res.status(400).json({ error: "date query param required: YYYY-MM-DD" });
+      }
+
+      const day = toDateOnlyUTC(date);
+
+      // all active daily tasks
+      const tasks = await prisma.task.findMany({
+        where: { active: true, isDaily: true },
+        select: { id: true, name: true, category: true, sortOrder: true },
+        orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+      });
+
+      // all logs for that day
+      const logs = await prisma.dailyLog.findMany({
+        where: { date: day },
+        select: { taskId: true },
+      });
+
+      const loggedTaskIds = new Set(logs.map((l) => l.taskId));
+      const missed = tasks.filter((t) => !loggedTaskIds.has(t.id));
+
+      res.json({
+        date,
+        missedCount: missed.length,
+        missedTasks: missed,
+      });
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
