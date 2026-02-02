@@ -1,3 +1,4 @@
+// RegisterPage.jsx - VOEG DEBUGGING TOE
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -39,6 +40,14 @@ const RegisterPage = () => {
     setLoading(true);
     
     try {
+      // DEBUG: Log wat we sturen
+      console.log('Sending register request:', {
+        name: formData.name,
+        email: formData.email,
+        password: '***', // Verberg wachtwoord in logs
+        role: 'USER'
+      });
+      
       // Call backend register endpoint
       const response = await axios.post('http://localhost:3001/auth/register', {
         name: formData.name,
@@ -47,13 +56,22 @@ const RegisterPage = () => {
         role: 'USER' // Default role
       });
       
+      console.log('Response:', response.data);
+      
       setSuccess('Account aangemaakt! Je kunt nu inloggen.');
       setTimeout(() => {
         navigate('/login');
       }, 2000);
       
     } catch (err) {
-      setError(err.response?.data?.error || 'Registratie mislukt');
+      // DEBUG: Log de volledige error
+      console.error('Registration error:', err);
+      console.error('Error response:', err.response);
+      
+      const errorMsg = err.response?.data?.error || 
+                      err.response?.data?.message || 
+                      'Registratie mislukt';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
