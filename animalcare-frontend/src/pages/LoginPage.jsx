@@ -1,4 +1,4 @@
-// src/pages/LoginPage.jsx
+// LoginPage.jsx - Gecorrigeerde redirect
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -20,7 +20,7 @@ const LoginPage = () => {
     const result = await login(email, password);
     
     if (result.success) {
-      navigate('/');
+      navigate('/dashboard'); // ← Naar dashboard gaan na login
     } else {
       setError(result.error || 'Inloggen mislukt');
     }
@@ -28,7 +28,7 @@ const LoginPage = () => {
     setLoading(false);
   };
 
-    return (
+  return (
     <div className="container mt-5">
       <div className="row justify-content-center">
         <div className="col-md-6 col-lg-4">
@@ -75,7 +75,6 @@ const LoginPage = () => {
                 </button>
               </form>
               
-              {/* REGISTER LINK TOEVOEGEN */}
               <div className="text-center mt-3">
                 <p className="text-muted">
                   Nog geen account?{' '}
@@ -85,7 +84,6 @@ const LoginPage = () => {
                 </p>
               </div>
               
-              {/* DEMO ACCOUNT INFO */}
               <div className="text-center mt-3">
                 <small className="text-muted">
                   Demo: admin@example.com / wachtwoord

@@ -1,4 +1,4 @@
-// src/components/Navbar.jsx
+// Navbar.jsx - Aangepast voor nieuwe routes
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,7 +27,7 @@ const Navbar = () => {
             {user && (
               <>
                 <li className="nav-item">
-                  <Link className="nav-link" to="/">Dashboard</Link>
+                  <Link className="nav-link" to="/dashboard">Dashboard</Link>
                 </li>
                 <li className="nav-item">
                   <Link className="nav-link" to="/tasks">Taken</Link>
@@ -56,9 +56,14 @@ const Navbar = () => {
                 </li>
               </>
             ) : (
-              <li className="nav-item">
-                <Link className="nav-link" to="/login">Inloggen</Link>
-              </li>
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/login">Inloggen</Link>
+                </li>
+                <li className="nav-item">
+                  <Link className="nav-link" to="/register">Registreren</Link>
+                </li>
+              </>
             )}
           </ul>
         </div>

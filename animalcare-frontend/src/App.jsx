@@ -1,5 +1,5 @@
-// App.jsx - GECORRIGEERD
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+// App.jsx - ALTERNATIEF (beter)
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Container } from 'react-bootstrap';
 import Navbar from './components/Navbar';
 import LoginPage from './pages/LoginPage';
@@ -24,27 +24,36 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               
-              {/* Protected routes - DIT IS DE FIX! */}
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              } />
+              {/* Protected routes - aparte dashboard route */}
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <DashboardPage />
+                  </ProtectedRoute>
+                } 
+              />
               
-              <Route path="/tasks" element={
-                <ProtectedRoute>
-                  <TasksPage />
-                </ProtectedRoute>
-              } />
+              <Route 
+                path="/tasks" 
+                element={
+                  <ProtectedRoute>
+                    <TasksPage />
+                  </ProtectedRoute>
+                } 
+              />
               
-              <Route path="/admin" element={
-                <ProtectedRoute requireAdmin>
-                  <AdminPage />
-                </ProtectedRoute>
-              } />
+              <Route 
+                path="/admin" 
+                element={
+                  <ProtectedRoute requireAdmin>
+                    <AdminPage />
+                  </ProtectedRoute>
+                } 
+              />
               
-              {/* Catch all */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Redirect / to dashboard if logged in, else home */}
+              <Route path="/home" element={<HomePage />} />
             </Routes>
           </Container>
           <footer className="bg-dark text-white text-center py-3 mt-4">

@@ -1,6 +1,10 @@
+// HomePage.jsx - Bijgewerkt
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext'; // ← Importeer useAuth
 
 const HomePage = () => {
+  const { user } = useAuth(); // ← Check of gebruiker is ingelogd
+
   return (
     <div className="homepage">
       <div className="container">
@@ -15,12 +19,22 @@ const HomePage = () => {
               taken en inventaris. Perfect voor dierenasielen, stallen en dierenartsen.
             </p>
             <div className="d-flex gap-3">
-              <Link to="/login" className="btn btn-primary btn-lg">
-                Inloggen
-              </Link>
-              <Link to="/register" className="btn btn-outline-primary btn-lg">
-                Registreren
-              </Link>
+              {user ? (
+                // Toon dashboard knop als ingelogd
+                <Link to="/dashboard" className="btn btn-primary btn-lg">
+                  Naar Dashboard
+                </Link>
+              ) : (
+                // Toon login/register knoppen als niet ingelogd
+                <>
+                  <Link to="/login" className="btn btn-primary btn-lg">
+                    Inloggen
+                  </Link>
+                  <Link to="/register" className="btn btn-outline-primary btn-lg">
+                    Registreren
+                  </Link>
+                </>
+              )}
             </div>
           </div>
           <div className="col-lg-6">
@@ -37,7 +51,7 @@ const HomePage = () => {
           </div>
         </div>
         
-        {/* Features */}
+        {/* Features blijft hetzelfde */}
         <div className="row mt-5 pt-5">
           <div className="col-md-4 mb-4">
             <div className="card h-100 border-0 shadow-sm">
