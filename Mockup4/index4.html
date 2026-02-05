@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AnimalCare – Admin Panel Mockup</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body { background:#f5f7fb; }
+    .sidebar {
+      width: 260px;
+      background: #0b1220;
+      color: rgba(255,255,255,.85);
+      border-right: 1px solid rgba(255,255,255,.06);
+      transition: width .2s ease;
+    }
+    .sidebar.collapsed { width: 78px; }
+    .sidebar .brand {
+      height: 56px;
+      display:flex;
+      align-items:center;
+      padding: 0 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .brand-dot { width:10px; height:10px; border-radius:50%; background:#0d6efd; display:inline-block; margin-right:.55rem; }
+    .sidebar .nav-link {
+      color: rgba(255,255,255,.85);
+      border-radius: .75rem;
+      padding: .65rem .85rem;
+      display:flex;
+      gap:.65rem;
+      align-items:center;
+    }
+    .sidebar .nav-link:hover { background: rgba(255,255,255,.06); }
+    .sidebar .nav-link.active { background: rgba(13,110,253,.2); color:#fff; }
+    .sidebar .nav-text { white-space: nowrap; overflow:hidden; text-overflow: ellipsis; }
+    .sidebar.collapsed .nav-text { display:none; }
+    .sidebar.collapsed .brand span:last-child { display:none; }
+    .main {
+      min-height: calc(100vh - 56px);
+    }
+    .card-soft { border: 1px solid rgba(0,0,0,.08); border-radius: 1rem; }
+    .muted { color: rgba(0,0,0,.6); }
+    .kpi { font-weight: 800; font-size: 1.35rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+
+<body>
+<!-- Topbar -->
+<nav class="navbar navbar-dark bg-dark" style="height:56px;">
+  <div class="container-fluid">
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-outline-light btn-sm" id="btnToggleSidebar4">☰</button>
+      <span class="navbar-brand mb-0 h1">AnimalCare Panel</span>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <select class="form-select form-select-sm" style="max-width:220px;" id="roleView4">
+        <option value="auto">Auto (based on login)</option>
+        <option value="caretaker">Caretaker view</option>
+        <option value="admin">Admin view</option>
+        <option value="supervisor">Supervisor view</option>
+      </select>
+
+      <input type="date" class="form-control form-control-sm" style="max-width: 180px;" id="globalDate4" />
+      <button class="btn btn-outline-light btn-sm" id="btnRefresh4">Refresh</button>
+
+      <span class="badge text-bg-secondary" id="roleBadge4">Not logged in</span>
+      <button class="btn btn-outline-light btn-sm d-none" id="btnLogout4">Logout</button>
+    </div>
+  </div>
+</nav>
+
+<div class="d-flex">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar4">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span class="fw-semibold">AnimalCare</span>
+    </div>
+
+    <div class="p-2">
+      <div class="nav flex-column gap-1" id="nav4">
+        <button class="nav-link active" data-view="dashboard" type="button">
+          <span>📊</span> <span class="nav-text">Dashboard</span>
+        </button>
+        <button class="nav-link" data-view="tasks" type="button">
+          <span>✅</span> <span class="nav-text">Tasks</span>
+        </button>
+        <button class="nav-link" data-view="admin" type="button">
+          <span>🛡️</span> <span class="nav-text">Admin</span>
+        </button>
+        <button class="nav-link" data-view="supervisor" type="button">
+          <span>🧾</span> <span class="nav-text">Supervisor</span>
+        </button>
+      </div>
+
+      <hr class="border-light opacity-25 my-3"/>
+
+      <div class="small opacity-75 px-2">
+        <div class="mb-1">Backend</div>
+        <div class="mono">http://localhost:3001</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-grow-1 main p-4">
+    <div class="mx-auto" style="max-width:1200px;">
+
+      <div id="alertBox4" class="alert d-none" role="alert"></div>
+
+      <!-- LOGIN -->
+      <div id="viewLogin4" class="row justify-content-center">
+        <div class="col-lg-6 col-xl-5">
+          <div class="card card-soft shadow-sm">
+            <div class="card-body p-4">
+              <h4 class="mb-1">Sign in</h4>
+              <div class="muted mb-4">Login to access features based on your role.</div>
+
+              <form id="loginForm4" class="row g-3">
+                <div class="col-12">
+                  <label class="form-label">Email</label>
+                  <input class="form-control" id="loginEmail4" placeholder="email@example.com" required />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Password</label>
+                  <input class="form-control" id="loginPassword4" type="password" required />
+                </div>
+
+                <div class="col-12 d-flex gap-2">
+                  <button class="btn btn-primary w-100" type="submit">Login</button>
+                  <button class="btn btn-outline-secondary" type="button" id="btnDemoFill4">Demo</button>
+                </div>
+              </form>
+
+              <div class="small muted mt-3">
+                Run with Live Server or <code>npx serve .</code>.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- APP -->
+      <div id="viewApp4" class="d-none">
+
+        <div class="mb-3">
+          <h2 class="mb-1" id="pageTitle4">Dashboard</h2>
+          <div class="muted" id="pageSubtitle4">Collapsible sidebar admin-panel mockup.</div>
+        </div>
+
+        <!-- KPIs -->
+        <div class="row g-3 mb-3">
+          <div class="col-md-3">
+            <div class="card card-soft shadow-sm">
+              <div class="card-body">
+                <div class="small muted">Backend</div>
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="kpi" id="kpiBackend4">—</div>
+                  <span class="badge text-bg-secondary" id="badgeBackend4">Unknown</span>
+                </div>
+                <div class="small muted mono">/health</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-soft shadow-sm">
+              <div class="card-body">
+                <div class="small muted">Completed</div>
+                <div class="kpi" id="kpiCompleted4">—</div>
+                <div class="small muted">Caretaker tasks</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-soft shadow-sm">
+              <div class="card-body">
+                <div class="small muted">Missed</div>
+                <div class="kpi" id="kpiMissed4">—</div>
+                <div class="small muted">Admin tasks missed</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card card-soft shadow-sm">
+              <div class="card-body">
+                <div class="small muted">Alerts</div>
+                <div class="kpi" id="kpiAlerts4">—</div>
+                <div class="small muted">Inventory warnings</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANES -->
+        <section id="paneDashboard4">
+          <div class="row g-3">
+            <div class="col-lg-7">
+              <div class="card card-soft shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div>
+                      <div class="fw-semibold">Today’s Tasks</div>
+                      <div class="small muted">/tasks/today + POST /daily-logs</div>
+                    </div>
+                    <span class="badge text-bg-light border" id="tasksCount4">—</span>
+                  </div>
+
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Task</th>
+                          <th>Category</th>
+                          <th>Status</th>
+                          <th style="width: 260px;">Log</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tasksTable4"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-5">
+              <div class="card card-soft shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold">Inventory Warnings</div>
+                    <span class="badge text-bg-light border mono">/admin/inventory-warnings</span>
+                  </div>
+
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Status</th>
+                          <th class="text-end">Stock</th>
+                        </tr>
+                      </thead>
+                      <tbody id="warningsTable4"></tbody>
+                    </table>
+                  </div>
+
+                  <div class="small muted mt-2">Open Admin page for full details.</div>
+                </div>
+              </div>
+
+              <div class="card card-soft shadow-sm mt-3">
+                <div class="card-body">
+                  <div class="fw-semibold mb-1">Supervisor Queue</div>
+                  <div class="small muted mb-2">PENDING logs</div>
+                  <div id="supQueue4" class="d-grid gap-2"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <section id="paneTasks4" class="d-none">
+          <div class="card card-soft shadow-sm">
+            <div class="card-body">
+              <h5 class="mb-1">Tasks</h5>
+              <div class="muted small mb-3">Same table as dashboard; focus on caretakers.</div>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Task</th>
+                      <th>Category</th>
+                      <th>Status</th>
+                      <th style="width: 260px;">Log</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tasksTable4b"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="paneAdmin4" class="d-none">
+          <div class="row g-3">
+            <div class="col-lg-4">
+              <div class="card card-soft shadow-sm">
+                <div class="card-body">
+                  <div class="fw-semibold">Missed tasks</div>
+                  <div class="muted small mb-2 mono">/admin/missed-tasks</div>
+                  <div class="kpi" id="missedCount4b">—</div>
+                  <div id="missedList4b" class="small mt-2"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-lg-8">
+              <div class="card card-soft shadow-sm">
+                <div class="card-body">
+                  <div class="fw-semibold">Inventory details</div>
+                  <div class="muted small mb-2 mono">/admin/inventory-warnings</div>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Status</th>
+                          <th class="text-end">Stock</th>
+                          <th class="text-end">Avg/day</th>
+                          <th class="text-end">Days</th>
+                          <th class="text-end">Order (kg)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="warningsTable4b"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card card-soft shadow-sm">
+                <div class="card-body">
+                  <div class="fw-semibold">Daily overview</div>
+                  <div class="muted small mb-2 mono">/admin/daily-overview</div>
+                  <div class="small muted mb-2" id="overviewTotals4">—</div>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Task</th>
+                          <th>Status</th>
+                          <th>Logged by</th>
+                        </tr>
+                      </thead>
+                      <tbody id="overviewTable4"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <section id="paneSupervisor4" class="d-none">
+          <div class="card card-soft shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                  <h5 class="mb-0">Supervisor Review</h5>
+                  <div class="muted small mono">/supervisor/logs</div>
+                </div>
+                <select class="form-select form-select-sm" style="max-width: 170px;" id="supStatus4">
+                  <option value="PENDING">PENDING</option>
+                  <option value="APPROVED">APPROVED</option>
+                  <option value="REJECTED">REJECTED</option>
+                </select>
+              </div>
+
+              <div id="supList4" class="d-grid gap-2"></div>
+            </div>
+          </div>
+        </section>
+
+      </div><!-- /viewApp -->
+
+    </div>
+  </main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="./app4.js"></script>
+</body>
+</html>
