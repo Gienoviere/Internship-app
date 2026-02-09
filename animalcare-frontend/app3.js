@@ -48,6 +48,17 @@ function badgeForStatus(status) {
 }
 
 async function loadMe() {
+  // Check eerst of er een token is
+  if (!token()) {
+    console.log("Geen token gevonden, gebruiker blijft uitgelogd");
+    currentUser = null;
+    $("roleBadge3").textContent = "Not logged in";
+    $("btnLogout3").classList.add("d-none");
+    $("viewLogin3").classList.remove("d-none");
+    $("viewApp3").classList.add("d-none");
+    return; // Stop hier
+  }
+  
   try {
     currentUser = await api("/auth/me");
     $("roleBadge3").textContent = `${currentUser.role}`;
@@ -55,7 +66,10 @@ async function loadMe() {
     $("viewLogin3").classList.add("d-none");
     $("viewApp3").classList.remove("d-none");
     await refreshAll();
-  } catch {
+  } catch (err) {
+    console.error("Auth/me failed:", err);
+    // Token is ongeldig, verwijder het
+    localStorage.removeItem("token");
     currentUser = null;
     $("roleBadge3").textContent = "Not logged in";
     $("btnLogout3").classList.add("d-none");
@@ -331,6 +345,72 @@ document.addEventListener("DOMContentLoaded", async () => {
       setAlert("danger", err.message);
     }
   });
+
+  $("loginForm3").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  
+  console.log("=== DEBUG LOGIN START ===");
+  
+  try {
+    const email = $("loginEmail3").value.trim();
+    const password = $("loginPassword3").value;
+    
+    console.log("1. Form values:", { email, password });
+    console.log("2. API_BASE:", API_BASE);
+    console.log("3. Full URL:", `${API_BASE}/auth/login`);
+    
+    // Debug de API call zelf
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ email, password })
+    });
+    
+    console.log("4. Response status:", res.status, res.statusText);
+    console.log("5. Response headers:");
+    for (const [key, value] of res.headers.entries()) {
+      console.log(`   ${key}: ${value}`);
+    }
+    
+    const responseText = await res.text();
+    console.log("6. Raw response text:", responseText);
+    
+    // Probeer te parsen als JSON
+    let parsedData = null;
+    try {
+      parsedData = responseText ? JSON.parse(responseText) : null;
+      console.log("7. Parsed JSON:", parsedData);
+    } catch (parseErr) {
+      console.log("7. Could not parse as JSON:", parseErr.message);
+    }
+    
+    if (!res.ok) {
+      console.error("8. HTTP ERROR:", res.status, responseText);
+      throw new Error(`Login failed: ${res.status} ${responseText}`);
+    }
+    
+    console.log("9. Token received:", parsedData?.token ? "YES" : "NO");
+    
+    if (parsedData?.token) {
+      localStorage.setItem("token", parsedData.token);
+      console.log("10. Token saved to localStorage");
+      setAlert("success", "Logged in.");
+      await loadMe();
+    } else {
+      console.error("11. No token in response!");
+      setAlert("danger", "No token received from server");
+    }
+    
+  } catch (err) {
+    console.error("12. CATCH BLOCK ERROR:", err);
+    console.error("13. Error stack:", err.stack);
+    setAlert("danger", `Login failed: ${err.message}`);
+  }
+  
+  console.log("=== DEBUG LOGIN END ===");
+});
 
   $("btnDemoFill3").addEventListener("click", () => {
     $("loginEmail3").value = "admin@example.com";
