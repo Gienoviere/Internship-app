@@ -142,38 +142,50 @@ router.post("/", requireAuth, async (req, res) => {
       });
 
       // Inventory adjustment
-      let inventory = null;
+      // Inventory adjustment (ONE movement per DailyLog)
+let inventory = null;
 
-      if (log.task.affectsInventory && log.task.feedItemId) {
-        const consumedChange = newQty - oldQty; // + means more consumption than before
-        if (consumedChange !== 0) {
-          const movementDelta = -consumedChange; // stock change (consume = negative)
+if (log.task.affectsInventory && log.task.feedItemId) {
+  // newQty is grams user entered (0 means none)
+  const desiredConsumed = newQty;          // grams
+  const desiredDelta = -desiredConsumed;   // inventory delta for THIS log
 
-          const item = await tx.feedItem.findUnique({
-            where: { id: log.task.feedItemId },
-          });
-          if (!item) throw new Error("FeedItem mapped on task not found");
+  // existing movement for this log (if any)
+  const existingMove = await tx.inventoryMovement.findUnique({
+    where: { refType_refId: { refType: "DailyLog", refId: log.id } },
+  });
 
-          const movement = await tx.inventoryMovement.create({
-            data: {
-              feedItemId: item.id,
-              date: day,
-              deltaGrams: movementDelta,
-              reason: "daily-log",
-              refType: "DailyLog",
-              refId: log.id,
-              userId: req.user.userId,
-            },
-          });
+  const prevDelta = existingMove ? existingMove.deltaGrams : 0;
+  const changeDelta = desiredDelta - prevDelta; // what we must APPLY to stock
 
-          const updatedItem = await tx.feedItem.update({
-            where: { id: item.id },
-            data: { stockGrams: item.stockGrams + movementDelta },
-          });
+  if (changeDelta !== 0) {
+    const movement = await tx.inventoryMovement.upsert({
+      where: { refType_refId: { refType: "DailyLog", refId: log.id } },
+      create: {
+        feedItemId: log.task.feedItemId,
+        date: day,
+        deltaGrams: desiredDelta,
+        reason: "daily-log",
+        refType: "DailyLog",
+        refId: log.id,
+        userId: req.user.userId,
+      },
+      update: {
+        feedItemId: log.task.feedItemId,
+        date: day,
+        deltaGrams: desiredDelta,
+      },
+    });
 
-          inventory = { movement, feedItem: updatedItem };
-        }
-      }
+    const updatedItem = await tx.feedItem.update({
+      where: { id: log.task.feedItemId },
+      data: { stockGrams: { increment: changeDelta } }, // ✅ race-safe
+    });
+
+    inventory = { movement, feedItem: updatedItem };
+  }
+}
+
 
       return { log, inventory };
     });
@@ -195,15 +207,21 @@ router.patch("/:id", requireAuth, async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid id" });
 
-    const existing = await prisma.dailyLog.findUnique({ where: { id } });
-    if (!existing) return res.status(404).json({ error: "Log not found" });
-
     const isAdmin = req.user.role === "ADMIN";
+
+    const existing = await prisma.dailyLog.findUnique({
+      where: { id },
+      include: {
+        task: { select: { affectsInventory: true, feedItemId: true } },
+      },
+    });
+
+    if (!existing) return res.status(404).json({ error: "Log not found" });
     if (!isAdmin && existing.userId !== req.user.userId) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const { completed, quantityGrams, notes } = req.body;
+    const { completed, quantityGrams, notes } = req.body || {};
 
     const q =
       quantityGrams === undefined || quantityGrams === null
@@ -214,20 +232,76 @@ router.patch("/:id", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "quantityGrams must be a non-negative number" });
     }
 
-    const log = await prisma.dailyLog.update({
-      where: { id },
-      data: {
-        ...(completed !== undefined ? { completed: Boolean(completed) } : {}),
-        ...(q !== undefined ? { quantityGrams: Math.round(q) } : {}),
-        ...(notes !== undefined ? { notes: notes ? String(notes) : null } : {}),
-      },
+    const newQty = q === undefined ? undefined : Math.round(q);
+    const oldQty = existing.quantityGrams ? existing.quantityGrams : 0;
+
+    const result = await prisma.$transaction(async (tx) => {
+      // Update log
+      const log = await tx.dailyLog.update({
+        where: { id },
+        data: {
+          ...(completed !== undefined ? { completed: Boolean(completed) } : {}),
+          ...(newQty !== undefined ? { quantityGrams: newQty === 0 ? null : newQty } : {}),
+          ...(notes !== undefined ? { notes: notes ? String(notes) : null } : {}),
+        },
+        include: {
+          task: { select: { affectsInventory: true, feedItemId: true } },
+        },
+      });
+
+      let inventory = null;
+
+      // If quantity not provided, don’t touch inventory
+      if (newQty === undefined) return { log, inventory };
+
+      if (log.task.affectsInventory && log.task.feedItemId) {
+        const desiredConsumed = newQty;
+        const desiredDelta = -desiredConsumed;
+
+        const existingMove = await tx.inventoryMovement.findUnique({
+          where: { refType_refId: { refType: "DailyLog", refId: log.id } },
+        });
+
+        const prevDelta = existingMove ? existingMove.deltaGrams : 0;
+        const changeDelta = desiredDelta - prevDelta;
+
+        if (changeDelta !== 0) {
+          const movement = await tx.inventoryMovement.upsert({
+            where: { refType_refId: { refType: "DailyLog", refId: log.id } },
+            create: {
+              feedItemId: log.task.feedItemId,
+              date: log.date,
+              deltaGrams: desiredDelta,
+              reason: "daily-log",
+              refType: "DailyLog",
+              refId: log.id,
+              userId: req.user.userId,
+            },
+            update: {
+              feedItemId: log.task.feedItemId,
+              date: log.date,
+              deltaGrams: desiredDelta,
+            },
+          });
+
+          const updatedItem = await tx.feedItem.update({
+            where: { id: log.task.feedItemId },
+            data: { stockGrams: { increment: changeDelta } },
+          });
+
+          inventory = { movement, feedItem: updatedItem };
+        }
+      }
+
+      return { log, inventory };
     });
 
-    res.json(log);
+    res.json(result);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Server error" });
   }
 });
+
 
 module.exports = router;

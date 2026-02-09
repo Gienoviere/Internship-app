@@ -114,4 +114,6 @@ model InventoryMovement {
 
   @@index([date])
   @@index([feedItemId])
+
+  @@unique([refType, refId])
 }
