@@ -106,8 +106,12 @@ router.post("/", requireAuth, async (req, res) => {
 
       const oldQty = existing?.quantityGrams ? existing.quantityGrams : 0;
 
+
       // Upsert log
+      const approvalStatus = req.user.role === "ADMIN" ? "APPROVED" : "PENDING";
+
       const log = await tx.dailyLog.upsert({
+        
         where: {
           date_taskId_userId: {
             date: day,
@@ -122,11 +126,13 @@ router.post("/", requireAuth, async (req, res) => {
           completed: completed === undefined ? true : Boolean(completed),
           quantityGrams: newQty === 0 ? null : newQty,
           notes: notes ? String(notes) : null,
+          approvalStatus,
         },
         update: {
           completed: completed === undefined ? true : Boolean(completed),
           quantityGrams: newQty === 0 ? null : newQty,
           notes: notes ? String(notes) : null,
+          approvalStatus,
         },
         include: {
           task: {

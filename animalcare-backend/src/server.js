@@ -9,6 +9,7 @@ const taskStatusRoutes = require("./routes/taskStatus");
 const dailyLogsRoutes = require("./routes/dailyLogs");
 const adminRoutes = require("./routes/admin");
 const inventoryRoutes = require("./routes/inventory");
+const supervisorRoutes = require("./routes/supervisor");
 //const inventoryWarnings = ("./admin/inventory-warnings");
 
 
@@ -27,6 +28,7 @@ app.use("/tasks", taskStatusRoutes);
 app.use("/daily-logs", dailyLogsRoutes);
 app.use("/admin", adminRoutes);
 app.use("/inventory", inventoryRoutes);
+app.use("/supervisor", supervisorRoutes);
 //app.use("/inventory-warnings", inventoryWarnings);
 
 // Start server LAST
