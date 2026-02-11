@@ -3,7 +3,7 @@ function $(id) { return document.getElementById(id); }
 
 function setAlert(type, msg) {
   const box = $("alertBox3");
-  box.className = `alert alert-${type} d-flex align-items-center`; // Bootstrap alert met icon
+  box.className = `alert alert-${type} d-flex align-items-center`;
   box.innerHTML = `<i class="bi bi-${type === 'success' ? 'check-circle-fill' : type === 'danger' ? 'exclamation-triangle-fill' : 'info-circle-fill'} me-2"></i>${msg}`;
   box.classList.remove("d-none");
   setTimeout(() => box.classList.add("d-none"), 4500);
@@ -12,39 +12,22 @@ function setAlert(type, msg) {
 function token() { return localStorage.getItem("token"); }
 
 async function api(path, options = {}) {
-  try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(options.headers || {}),
-      },
-    });
+  const headers = options.headers || {};
+  if (token()) headers["Authorization"] = `Bearer ${token()}`;
+  if (options.json) headers["Content-Type"] = "application/json";
 
-    if (res.status === 401) {
-      alert("Session expired. Please login again.");
-      logout3();
-      throw new Error("Unauthorized");
-    }
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers,
+    body: options.json ? JSON.stringify(options.json) : options.body
+  });
 
-    const text = await res.text();
-    const data = text ? JSON.parse(text) : {};
-
-    if (!res.ok) {
-      console.error("API error:", data);
-      alert(data.error || "Server error");
-      throw new Error(data.error || "Request failed");
-    }
-
-    return data;
-  } catch (err) {
-    console.error(err);
-    alert("Network or server error");
-    throw err;
-  }
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+  if (!res.ok) throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+  return data;
 }
-
 
 function isoToday() {
   const d = new Date();
@@ -64,6 +47,7 @@ function badgeForStatus(status) {
   return "text-bg-secondary";
 }
 
+// ==================== ORIGINELE FUNCTIES (ONVERANDERD) ====================
 async function loadMe() {
   if (!token()) {
     console.log("Geen token gevonden, gebruiker blijft uitgelogd");
@@ -179,7 +163,7 @@ async function loadAdminPanels(date) {
   lastData.warnings = warnings;
   lastData.overview = overview;
 
-  // --- Missed tasks KPI als card ---
+  // Missed tasks KPI
   const missedCount = missed.missedCount;
   $("kpiMissed3").innerHTML = `
     <div class="card border-danger mb-3">
@@ -196,12 +180,11 @@ async function loadAdminPanels(date) {
   `;
   $("missedCount3").textContent = missedCount;
 
-  // --- Inventory warnings: vervang tabel door Bootstrap alerts ---
+  // Inventory warnings
   const alerts = warnings.items.filter(i => i.status === "WARN" || i.status === "CRITICAL").length;
   $("kpiAlerts3").innerHTML = `<span class="badge bg-warning">${alerts} waarschuwingen</span>`;
 
-  const warningsContainer = $("warningsTable3");
-  // Vervang tbody door div met alerts (als dat nog niet is gedaan)
+  let warningsContainer = $("warningsTable3");
   if (warningsContainer.tagName !== "DIV") {
     const parent = warningsContainer.parentNode;
     const newDiv = document.createElement("div");
@@ -221,7 +204,7 @@ async function loadAdminPanels(date) {
     </div>
   `).join("");
 
-  // --- Daily overview tabel in Bootstrap stijl ---
+  // Daily overview
   $("overviewTotals3").innerHTML = `
     <span class="badge bg-secondary">Totaal: ${overview.totals?.tasksTotal}</span>
     <span class="badge bg-success">Voltooid: ${overview.totals?.completed}</span>
@@ -243,7 +226,7 @@ async function loadAdminPanels(date) {
     ot.appendChild(row);
   });
 
-  // Missed taken modal (blijft ongewijzigd, alleen styling in modal zelf)
+  // Modal details
   $("modalMissed3").innerHTML = missed.missedTasks.length
     ? missed.missedTasks.map(t => `<div class="border-bottom pb-1 mb-1">• <span class="fw-semibold">${t.name}</span> <span class="text-muted">(${t.category})</span></div>`).join("")
     : `<div class="text-muted fst-italic">Geen gemiste taken.</div>`;
@@ -322,12 +305,12 @@ async function decideLog(id, approvalStatus) {
 async function refreshAll() {
   const date = $("globalDate3").value;
   await checkBackend();
-
   await loadTasksToday(date);
 
   const view = getRoleView();
   if (view === "admin" || currentUser?.role === "ADMIN") {
     await loadAdminPanels(date);
+    $("adminSpecificUI")?.classList.remove("d-none");
   } else {
     $("kpiMissed3").innerHTML = '<span class="badge bg-secondary">—</span>';
     $("kpiAlerts3").innerHTML = '<span class="badge bg-secondary">—</span>';
@@ -335,6 +318,7 @@ async function refreshAll() {
     $("warningsTable3").innerHTML = "";
     $("overviewTable3").innerHTML = "";
     $("overviewTotals3").innerHTML = "—";
+    $("adminSpecificUI")?.classList.add("d-none");
   }
 
   if (view === "supervisor" || currentUser?.role === "SUPERVISOR" || currentUser?.role === "ADMIN") {
@@ -343,7 +327,7 @@ async function refreshAll() {
     $("supQueue3").innerHTML = `<div class="alert alert-secondary small mb-0"><i class="bi bi-info-circle me-1"></i>Niet beschikbaar voor deze rol.</div>`;
   }
 
-  // Dynamische paginatitel / subtitel (styling blijft via classes in HTML)
+  // Update page header
   const titles = {
     admin: { title: "Admin Dashboard", subtitle: "Overzicht, gemiste taken, voorraadwaarschuwingen en dagelijkse status." },
     supervisor: { title: "Supervisor Dashboard", subtitle: "Keur aanvragen goed of keur ze af." },
@@ -352,25 +336,414 @@ async function refreshAll() {
   const t = titles[view] || { title: "Dashboard", subtitle: "Professioneel backend-gekoppeld mockup." };
   $("pageTitle3").textContent = t.title;
   $("pageSubtitle3").textContent = t.subtitle;
+
+  // Toon/verberg role-specific UI (toegevoegd in injectMissingUI)
+  updateRoleSpecificUI(view);
 }
 
-// ==================== STYLING BOOTSTRAP (eenmalig) ====================
-function applyBootstrapLayout() {
-  // Globale datum input styling
-  const dateInput = $("globalDate3");
-  if (dateInput) {
-    dateInput.classList.add("form-control", "form-control-sm", "w-auto", "d-inline-block");
+// ==================== NIEUW: FRONTEND-FEATURES UIT JOUW PHP-DASHBOARDS ====================
+// Geen backend, alleen UI met dummy‑data en alerts.
+
+function injectMissingUI() {
+  if ($("viewApp3").querySelector("#injectedUIMarker")) return; // al toegevoegd
+
+  // 1. Row voor extra stat cards (admin & caretaker)
+  const statRow = document.createElement("div");
+  statRow.id = "extraStatCards";
+  statRow.className = "row mb-4";
+  statRow.innerHTML = `
+    <div class="col-md-3 mb-3 admin-only caretaker-only">
+      <div class="card text-white bg-primary h-100">
+        <div class="card-body d-flex justify-content-between align-items-center p-3">
+          <div>
+            <h6 class="card-title mb-0">Actieve gebruikers</h6>
+            <span class="fs-3 fw-bold">8/12</span>
+          </div>
+          <i class="bi bi-people fs-1"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3 admin-only caretaker-only">
+      <div class="card text-white bg-success h-100">
+        <div class="card-body d-flex justify-content-between align-items-center p-3">
+          <div>
+            <h6 class="card-title mb-0">Voltooide taken</h6>
+            <span class="fs-3 fw-bold">64%</span>
+          </div>
+          <i class="bi bi-check-circle fs-1"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3 admin-only">
+      <div class="card text-white bg-warning h-100">
+        <div class="card-body d-flex justify-content-between align-items-center p-3">
+          <div>
+            <h6 class="card-title mb-0">Waarschuwingen</h6>
+            <span class="fs-3 fw-bold">7</span>
+          </div>
+          <i class="bi bi-exclamation-triangle fs-1"></i>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3 mb-3 admin-only">
+      <div class="card text-white bg-info h-100">
+        <div class="card-body d-flex justify-content-between align-items-center p-3">
+          <div>
+            <h6 class="card-title mb-0">Voorraad niveau</h6>
+            <span class="fs-3 fw-bold">42%</span>
+          </div>
+          <i class="bi bi-box-seam fs-1"></i>
+        </div>
+      </div>
+    </div>
+  `;
+  $("viewApp3").insertBefore(statRow, $("viewApp3").firstChild.nextSibling);
+
+  // 2. Admin instructies / belangrijke mededelingen (alleen caretaker/supervisor)
+  const adminInstr = document.createElement("div");
+  adminInstr.id = "adminInstructionsCard";
+  adminInstr.className = "card mb-4 supervisor-only caretaker-only";
+  adminInstr.innerHTML = `
+    <div class="card-header bg-info text-white">
+      <h5 class="mb-0"><i class="bi bi-megaphone me-2"></i>Admin instructies</h5>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info mb-2">
+        <h6><i class="bi bi-info-circle me-1"></i> Belangrijk voor vandaag:</h6>
+        <p class="small mb-0">Let extra op het gedrag van de varkens na het voeren. Meld eventuele afwijkingen direct in observaties.</p>
+      </div>
+      <div class="alert alert-warning mb-2">
+        <h6><i class="bi bi-exclamation-triangle me-1"></i> Wijziging voerhoeveelheid:</h6>
+        <p class="small mb-0">Vanaf morgen: varkensvoer verminderd naar 600g per dier i.p.v. 700g.</p>
+      </div>
+      <div class="alert alert-light border mb-0">
+        <h6><i class="bi bi-calendar-event me-1"></i> Geplande activiteit:</h6>
+        <p class="small mb-0">Dierenarts bezoekt morgen om 14:00 voor routinecontrole.</p>
+      </div>
+    </div>
+  `;
+  $("viewApp3").appendChild(adminInstr);
+
+  // 3. Snelle acties card (caretaker)
+  const quickActions = document.createElement("div");
+  quickActions.id = "quickActionsCard";
+  quickActions.className = "card mb-4 caretaker-only";
+  quickActions.innerHTML = `
+    <div class="card-header">
+      <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Snelle acties</h5>
+    </div>
+    <div class="card-body">
+      <div class="d-grid gap-2">
+        <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#quickLogModal">
+          <i class="bi bi-plus-circle me-2"></i>Snelle log toevoegen
+        </button>
+        <button class="btn btn-outline-success" onclick="setAlert('info', 'Observatie melden (dummy)')">
+          <i class="bi bi-eye me-2"></i>Observatie melden
+        </button>
+        <button class="btn btn-outline-warning" onclick="setAlert('info', 'Voorraad bijwerken (dummy)')">
+          <i class="bi bi-box-arrow-down me-2"></i>Voorraad bijwerken
+        </button>
+        <button class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#photoUploadModal">
+          <i class="bi bi-camera me-2"></i>Foto uploaden
+        </button>
+      </div>
+    </div>
+  `;
+  $("viewApp3").appendChild(quickActions);
+
+  // 4. Recente activiteit tabel (caretaker)
+  const recentActivity = document.createElement("div");
+  recentActivity.id = "recentActivityCard";
+  recentActivity.className = "card mt-4 caretaker-only";
+  recentActivity.innerHTML = `
+    <div class="card-header">
+      <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recente activiteit</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+          <thead>
+            <tr><th>Tijd</th><th>Actie</th><th>Uitgevoerd door</th><th>Details</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>09:15</td><td><span class="badge bg-success">Taak voltooid</span></td><td>Jan Jansen</td><td>Kippenhok schoonmaken</td></tr>
+            <tr><td>08:45</td><td><span class="badge bg-info">Observatie</span></td><td>Piet Pietersen</td><td>Varken #3 lijkt minder actief</td></tr>
+            <tr><td>08:30</td><td><span class="badge bg-primary">Voorraad</span></td><td>Admin</td><td>Konijnenvoer bijgevuld (+25kg)</td></tr>
+            <tr><td>Gisteren 16:20</td><td><span class="badge bg-warning">Waarschuwing</span></td><td>Systeem</td><td>Varkens niet gevoerd na 17:00</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  $("viewApp3").appendChild(recentActivity);
+
+  // 5. Admin extra: systeem instellingen & recente observaties
+  const adminExtras = document.createElement("div");
+  adminExtras.id = "adminExtras";
+  adminExtras.className = "row mt-4 admin-only";
+  adminExtras.innerHTML = `
+    <div class="col-lg-4">
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Systeem instellingen</h5>
+        </div>
+        <div class="card-body p-0">
+          <div class="list-group list-group-flush">
+            <a href="#" class="list-group-item list-group-item-action" onclick="setAlert('info', 'Alarminstellingen (dummy)'); return false;">Alarminstellingen</a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="setAlert('info', 'Gebruikersbeheer (dummy)'); return false;">Gebruikersbeheer</a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="setAlert('info', 'Voerhoeveelheden (dummy)'); return false;">Voerhoeveelheden</a>
+            <a href="#" class="list-group-item list-group-item-action" onclick="setAlert('info', 'Email instellingen (dummy)'); return false;">Email instellingen</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h5 class="mb-0"><i class="bi bi-eye me-2"></i>Recente observaties</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="card border">
+                <div class="card-body p-3">
+                  <h6>Varken #3 minder actief</h6>
+                  <p class="small mb-2">Varken #3 lijkt minder actief dan normaal.</p>
+                  <div class="d-flex justify-content-between">
+                    <small class="text-muted">Piet Pietersen - 08:45</small>
+                    <button class="btn btn-sm btn-outline-info" onclick="setAlert('info', 'Behandel melding (dummy)')">Behandel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card border">
+                <div class="card-body p-3">
+                  <h6>Kip met kale plek</h6>
+                  <p class="small mb-2">Kip in hok B heeft kale plek op rug.</p>
+                  <div class="d-flex justify-content-between">
+                    <small class="text-muted">Jan Jansen - Gisteren</small>
+                    <button class="btn btn-sm btn-outline-success" onclick="setAlert('success', 'Afgerond (dummy)')">Afgerond</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  $("viewApp3").appendChild(adminExtras);
+
+  // 6. Modals (Quick Log, Photo Upload, Send Summary, System Report)
+  const modalHTML = `
+    <!-- Quick Log Modal -->
+    <div class="modal fade" id="quickLogModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Snelle log toevoegen</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="quickLogForm">
+              <div class="mb-3">
+                <label class="form-label">Taak</label>
+                <select class="form-select" id="quickLogTask">
+                  <option>Varkens voeren</option>
+                  <option>Kippenhok schoonmaken</option>
+                  <option>Konijnen voeren</option>
+                  <option>Dieren observatie</option>
+                  <option>Stallen controleren</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Hoeveelheid (gram)</label>
+                <input type="number" class="form-control" id="quickLogQuantity" placeholder="3500">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Opmerkingen</label>
+                <textarea class="form-control" rows="2" id="quickLogNotes" placeholder="Optioneel"></textarea>
+              </div>
+              <div class="form-check mb-3">
+                <input type="checkbox" class="form-check-input" id="quickLogPhoto">
+                <label class="form-check-label" for="quickLogPhoto">Foto toevoegen</label>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+            <button type="button" class="btn btn-primary" id="submitQuickLog">Log toevoegen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Photo Upload Modal -->
+    <div class="modal fade" id="photoUploadModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-camera me-2"></i>Foto uploaden</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form id="photoUploadForm">
+              <div class="mb-3">
+                <label class="form-label">Beschrijving</label>
+                <input type="text" class="form-control" id="photoDescription" placeholder="Wat zien we op de foto?">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Dier / Locatie</label>
+                <select class="form-select" id="photoAnimal">
+                  <option>Varkens</option>
+                  <option>Kippen</option>
+                  <option>Konijnen</option>
+                  <option>Algemeen</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Foto selecteren</label>
+                <input class="form-control" type="file" accept="image/*">
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+            <button type="button" class="btn btn-primary" id="submitPhotoUpload">Uploaden</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Send Summary Modal (Admin) -->
+    <div class="modal fade" id="sendSummaryModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Log samenvatting versturen</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <label class="form-label">Ontvangers</label>
+                <input type="email" class="form-control" value="admin@dierenzorg.nl">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Periode</label>
+                <select class="form-select">
+                  <option>Vandaag</option>
+                  <option>Afgelopen week</option>
+                </select>
+              </div>
+              <div class="form-check">
+                <input type="checkbox" class="form-check-input" id="autoSend">
+                <label class="form-check-label" for="autoSend">Dagelijks automatisch versturen</label>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+            <button type="button" class="btn btn-primary" onclick="setAlert('success', 'Samenvatting verstuurd! (dummy)'); bootstrap.Modal.getInstance(document.getElementById('sendSummaryModal')).hide();">Versturen</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- System Report Modal (Admin) -->
+    <div class="modal fade" id="systemReportModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title"><i class="bi bi-file-text me-2"></i>Systeemrapport</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form>
+              <div class="mb-3">
+                <label class="form-label">Rapport type</label>
+                <select class="form-select">
+                  <option>Maandrapport</option>
+                  <option>Weekrapport</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Periode</label>
+                <div class="row">
+                  <div class="col-md-6">
+                    <input type="date" class="form-control" value="${isoToday()}">
+                  </div>
+                  <div class="col-md-6">
+                    <input type="date" class="form-control" value="${isoToday()}">
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+            <button type="button" class="btn btn-primary" onclick="setAlert('success', 'Rapport gegenereerd! (dummy)'); bootstrap.Modal.getInstance(document.getElementById('systemReportModal')).hide();">Genereren</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+  // Marker om dubbele injectie te voorkomen
+  const marker = document.createElement("div");
+  marker.id = "injectedUIMarker";
+  marker.style.display = "none";
+  $("viewApp3").appendChild(marker);
+
+  // Event listeners voor nieuwe modals
+  $("submitQuickLog")?.addEventListener("click", function() {
+    setAlert("success", "Snelle log toegevoegd! (dummy)");
+    bootstrap.Modal.getInstance($("quickLogModal")).hide();
+  });
+  $("submitPhotoUpload")?.addEventListener("click", function() {
+    setAlert("success", "Foto geüpload! (dummy)");
+    bootstrap.Modal.getInstance($("photoUploadModal")).hide();
+  });
+
+  // Voeg admin-knop toe als die nog niet bestaat (voor sendSummaryModal)
+  if (!$("btnSendSummary3")) {
+    const adminToolbar = document.querySelector("#viewApp3 .btn-toolbar");
+    if (adminToolbar) {
+      const summaryBtn = document.createElement("button");
+      summaryBtn.id = "btnSendSummary3";
+      summaryBtn.type = "button";
+      summaryBtn.className = "btn btn-sm btn-primary ms-2";
+      summaryBtn.setAttribute("data-bs-toggle", "modal");
+      summaryBtn.setAttribute("data-bs-target", "#sendSummaryModal");
+      summaryBtn.innerHTML = '<i class="bi bi-envelope me-1"></i>Log samenvatting';
+      adminToolbar.appendChild(summaryBtn);
+    }
   }
+}
 
-  // Rol view selector
-  const roleView = $("roleView3");
-  if (roleView) roleView.classList.add("form-select", "form-select-sm", "w-auto", "d-inline-block");
+function updateRoleSpecificUI(view) {
+  // Toon/verberg elementen op basis van role
+  const adminOnly = document.querySelectorAll(".admin-only");
+  const supervisorOnly = document.querySelectorAll(".supervisor-only");
+  const caretakerOnly = document.querySelectorAll(".caretaker-only");
 
-  // Refresh knop
-  const refreshBtn = $("btnRefresh3");
-  if (refreshBtn) refreshBtn.classList.add("btn", "btn-sm", "btn-outline-primary");
+  adminOnly.forEach(el => el.style.display = view === "admin" ? "block" : "none");
+  supervisorOnly.forEach(el => el.style.display = view === "supervisor" ? "block" : "none");
+  caretakerOnly.forEach(el => el.style.display = view === "caretaker" ? "block" : "none");
 
-  // Wrap taken tabel in een card
+  // Extra: specifieke containers voor admin
+  const adminExtras = $("adminExtras");
+  if (adminExtras) adminExtras.style.display = view === "admin" ? "flex" : "none";
+  const adminInstructions = $("adminInstructionsCard");
+  if (adminInstructions) adminInstructions.style.display = (view === "caretaker" || view === "supervisor") ? "block" : "none";
+}
+
+// ==================== STYLING BOOTSTRAP (EENMALIG) ====================
+function applyBootstrapLayout() {
+  $("globalDate3")?.classList.add("form-control", "form-control-sm", "w-auto", "d-inline-block");
+  $("roleView3")?.classList.add("form-select", "form-select-sm", "w-auto", "d-inline-block");
+  $("btnRefresh3")?.classList.add("btn", "btn-sm", "btn-outline-primary");
+
+  // Taken tabel in card wrappen
   const tasksTbody = $("tasksTable3");
   if (tasksTbody) {
     const table = tasksTbody.closest("table");
@@ -392,18 +765,15 @@ function applyBootstrapLayout() {
     }
   }
 
-  // Admin secties als cards inrichten (worden dynamisch gevuld, maar containers klaarzetten)
+  // Admin panels wrappen
   const adminSections = [
     { id: "kpiMissed3", title: "Gemiste taken", icon: "exclamation-triangle-fill" },
     { id: "warningsTable3", title: "Voorraadwaarschuwingen", icon: "exclamation-triangle" },
     { id: "overviewTable3", title: "Dagelijks overzicht", icon: "calendar-day" }
   ];
-
   adminSections.forEach(section => {
     let el = $(section.id);
-    if (el && !el.closest(".card")) {
-      // Voor warningsTable3: we vervangen het element later door een div, dus nu niet wrappen
-      if (section.id === "warningsTable3" && el.tagName === "TBODY") return;
+    if (el && !el.closest(".card") && section.id !== "warningsTable3") {
       const parent = el.parentNode;
       const card = document.createElement("div");
       card.className = "card mb-3 h-100";
@@ -419,7 +789,7 @@ function applyBootstrapLayout() {
     }
   });
 
-  // Supervisor queue als card
+  // Supervisor queue card
   const supQueue = $("supQueue3");
   if (supQueue && !supQueue.closest(".card")) {
     const parent = supQueue.parentNode;
@@ -435,79 +805,34 @@ function applyBootstrapLayout() {
     card.appendChild(cardBody);
     cardBody.appendChild(supQueue);
   }
-
-  // Extra KPI's (backend, completed) in badge-stijl plaatsen
-  const kpiCompleted = $("kpiCompleted3");
-  if (kpiCompleted) kpiCompleted.className = "badge bg-success ms-2";
-  const kpiBackend = $("kpiBackend3");
-  if (kpiBackend) kpiBackend.className = "badge";
 }
 
+// ==================== INIT ====================
 document.addEventListener("DOMContentLoaded", async () => {
   $("globalDate3").value = isoToday();
 
-  // Login form DEBUG (ongewijzigd gelaten, alleen styling classes toegevoegd)
+  // Styling classes voor login
   $("loginEmail3")?.classList.add("form-control");
   $("loginPassword3")?.classList.add("form-control");
   $("btnDemoFill3")?.classList.add("btn", "btn-sm", "btn-outline-secondary");
   $("loginForm3")?.querySelector("button[type=submit]")?.classList.add("btn", "btn-primary");
 
+  // LOGIN - originele werkende versie
   $("loginForm3").addEventListener("submit", async (e) => {
     e.preventDefault();
-    console.log("=== DEBUG LOGIN START ===");
     try {
       const email = $("loginEmail3").value.trim();
       const password = $("loginPassword3").value;
-      console.log("1. Form values:", { email, password });
-      console.log("2. API_BASE:", API_BASE);
-      console.log("3. Full URL:", `${API_BASE}/auth/login`);
-      
-      const res = await fetch(`${API_BASE}/auth/login`, {
+      const res = await api("/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        json: { email, password }
       });
-      
-      console.log("4. Response status:", res.status, res.statusText);
-      console.log("5. Response headers:");
-      for (const [key, value] of res.headers.entries()) {
-        console.log(`   ${key}: ${value}`);
-      }
-      
-      const responseText = await res.text();
-      console.log("6. Raw response text:", responseText);
-      
-      let parsedData = null;
-      try {
-        parsedData = responseText ? JSON.parse(responseText) : null;
-        console.log("7. Parsed JSON:", parsedData);
-      } catch (parseErr) {
-        console.log("7. Could not parse as JSON:", parseErr.message);
-      }
-      
-      if (!res.ok) {
-        console.error("8. HTTP ERROR:", res.status, responseText);
-        throw new Error(`Login failed: ${res.status} ${responseText}`);
-      }
-      
-      console.log("9. Token received:", parsedData?.token ? "YES" : "NO");
-      
-      if (parsedData?.token) {
-        localStorage.setItem("token", parsedData.token);
-        console.log("10. Token saved to localStorage");
-        setAlert("success", "Logged in.");
-        await loadMe();
-      } else {
-        console.error("11. No token in response!");
-        setAlert("danger", "No token received from server");
-      }
-      
+      localStorage.setItem("token", res.token);
+      setAlert("success", "Logged in.");
+      await loadMe();
     } catch (err) {
-      console.error("12. CATCH BLOCK ERROR:", err);
-      console.error("13. Error stack:", err.stack);
-      setAlert("danger", `Login failed: ${err.message}`);
+      setAlert("danger", err.message);
     }
-    console.log("=== DEBUG LOGIN END ===");
   });
 
   $("btnDemoFill3").addEventListener("click", () => {
@@ -531,7 +856,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     modal.show();
   });
 
-  // Eerste styling aanbrengen
+  // Voeg de ontbrekende UI-componenten toe (jouw PHP-features)
+  injectMissingUI();
   applyBootstrapLayout();
   await loadMe();
 });
