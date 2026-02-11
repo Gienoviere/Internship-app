@@ -13,6 +13,12 @@ enum Role {
   SUPERVISOR
 }
 
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id           Int        @id @default(autoincrement())
   name         String
@@ -51,6 +57,7 @@ model DailyLog {
   quantityGrams Int?
   notes         String?
 
+   // supervisor workflow
   approvalStatus ApprovalStatus @default(PENDING)
   supervisorNote String?
   reviewedAt     DateTime?

@@ -12,22 +12,39 @@ function setAlert(type, msg) {
 function token() { return localStorage.getItem("token"); }
 
 async function api(path, options = {}) {
-  const headers = options.headers || {};
-  if (token()) headers["Authorization"] = `Bearer ${token()}`;
-  if (options.json) headers["Content-Type"] = "application/json";
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(options.headers || {}),
+      },
+    });
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-    body: options.json ? JSON.stringify(options.json) : options.body
-  });
+    if (res.status === 401) {
+      alert("Session expired. Please login again.");
+      logout3();
+      throw new Error("Unauthorized");
+    }
 
-  const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-  if (!res.ok) throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
-  return data;
+    const text = await res.text();
+    const data = text ? JSON.parse(text) : {};
+
+    if (!res.ok) {
+      console.error("API error:", data);
+      alert(data.error || "Server error");
+      throw new Error(data.error || "Request failed");
+    }
+
+    return data;
+  } catch (err) {
+    console.error(err);
+    alert("Network or server error");
+    throw err;
+  }
 }
+
 
 function isoToday() {
   const d = new Date();
@@ -435,4 +452,25 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   await loadMe();
+
+  function applyRoleVisibility() {
+  const role = currentUser.role;
+
+  // Caretaker section
+  document.getElementById("caretakerSection3").style.display =
+    role === "USER" || role === "SUPERVISOR" || role === "ADMIN"
+      ? "block"
+      : "none";
+
+  // Admin section
+  document.getElementById("adminSection3").style.display =
+    role === "ADMIN" ? "block" : "none";
+
+  // Supervisor section
+  document.getElementById("supervisorSection3").style.display =
+    role === "SUPERVISOR" || role === "ADMIN"
+      ? "block"
+      : "none";
+}
+
 });
