@@ -1,9 +1,23 @@
-// js/state.js
 export const state = {
+  apiBase: "http://localhost:3001",
   currentUser: null,
-  lastData: { missed: null, warnings: null, overview: null, tasksToday: null, supQueue: null },
+  last: {
+    tasksToday: null,
+    missed: null,
+    warnings: null,
+    overview: null,
+    supQueue: null,
+  },
 };
 
-export function setCurrentUser(user) {
-  state.currentUser = user;
+export function getToken() {
+  return localStorage.getItem("token");
+}
+
+export function setToken(t) {
+  localStorage.setItem("token", t);
+}
+
+export function clearToken() {
+  localStorage.removeItem("token");
 }
