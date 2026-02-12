@@ -1,62 +1,64 @@
 import { api } from "./api.js";
-import { state, setToken, clearToken, getToken } from "./state.js";
-import { show, hide, on, $ } from "./dom.js";
+import { state } from "./state.js";
+import { $, setText } from "./dom.js";
 import { setAlert } from "./ui.js";
-import { refreshAll } from "./main.js"; // circular-safe because only used after init
 
-export async function loadMe() {
-  if (!getToken()) {
-    state.currentUser = null;
-    show("viewLogin3");
-    hide("viewApp3");
-    hide("btnLogout3");
-    return;
-  }
+export async function loadTasksToday(date) {
+  const data = await api(`/tasks/today?date=${date}`);
+  state.last.tasksToday = data;
 
-  try {
-    state.currentUser = await api("/auth/me");
-    hide("viewLogin3");
-    show("viewApp3");
-    show("btnLogout3");
-    await refreshAll();
-  } catch (e) {
-    console.error(e);
-    clearToken();
-    state.currentUser = null;
-    show("viewLogin3");
-    hide("viewApp3");
-    hide("btnLogout3");
-    setAlert("danger", e.message);
-  }
-}
+  const tasks = data.tasks || [];
+  setText("tasksCount3", `${tasks.length} taken`);
 
-export function wireAuthUI() {
-  on("loginForm3", "submit", async (e) => {
-    e.preventDefault();
-    const email = $("loginEmail3")?.value?.trim();
-    const password = $("loginPassword3")?.value;
+  const tbody = $("tasksTable3");
+  if (!tbody) return;
 
-    if (!email || !password) return setAlert("danger", "Email and password required");
+  tbody.innerHTML = "";
 
-    try {
-      const res = await api("/auth/login", { method: "POST", json: { email, password } });
-      setToken(res.token);
-      setAlert("success", "Logged in.");
-      await loadMe();
-    } catch (err) {
-      setAlert("danger", err.message);
-    }
+  tasks.forEach((t) => {
+    const status = t.logged ? (t.completed ? "Logged" : "Logged (incomplete)") : "Not logged";
+    const badgeClass = t.logged && t.completed ? "text-bg-success" : t.logged ? "text-bg-warning" : "text-bg-secondary";
+    const disabled = t.logged && t.completed;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="fw-semibold">${t.taskName}</span></td>
+      <td><span class="badge bg-light text-dark border">${t.category ?? "—"}</span></td>
+      <td><span class="badge ${badgeClass}">${status}</span></td>
+      <td>
+        <div class="d-flex gap-2">
+          <input class="form-control form-control-sm" style="max-width:120px"
+            id="qty3_${t.taskId}" placeholder="gram" value="${t.quantityGrams ?? ""}">
+          <button class="btn btn-sm btn-${disabled ? "secondary" : "primary"}" ${disabled ? "disabled" : ""} data-log="${t.taskId}">
+            <i class="bi bi-check-circle me-1"></i>Log
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
   });
 
-  on("btnDemoFill3", "click", () => {
-    if ($("loginEmail3")) $("loginEmail3").value = "admin@example.com";
-    if ($("loginPassword3")) $("loginPassword3").value = "password";
-  });
+  tbody.querySelectorAll("button[data-log]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const taskId = Number(btn.dataset.log);
+      const qtyVal = $(`qty3_${taskId}`)?.value;
+      const qty = qtyVal ? Number(qtyVal) : null;
 
-  on("btnLogout3", "click", () => {
-    clearToken();
-    state.currentUser = null;
-    setAlert("info", "Logged out.");
-    loadMe();
+      try {
+        await api("/daily-logs", {
+          method: "POST",
+          json: {
+            date,
+            taskId,
+            completed: true,
+            quantityGrams: Number.isFinite(qty) ? qty : null,
+            notes: "",
+          },
+        });
+        setAlert("success", "Task logged.");
+      } catch (e) {
+        setAlert("danger", e.message);
+      }
+    });
   });
 }

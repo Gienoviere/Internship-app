@@ -2,7 +2,13 @@ import { api } from "./api.js";
 import { state, setToken, clearToken, getToken } from "./state.js";
 import { show, hide, on, $ } from "./dom.js";
 import { setAlert } from "./ui.js";
-import { refreshAll } from "./main.js"; // circular-safe because only used after init
+
+let onLoginSuccess = null;
+
+// main.js will inject refreshAll into here (avoids circular import)
+export function setOnLoginSuccess(fn) {
+  onLoginSuccess = fn;
+}
 
 export async function loadMe() {
   if (!getToken()) {
@@ -18,7 +24,10 @@ export async function loadMe() {
     hide("viewLogin3");
     show("viewApp3");
     show("btnLogout3");
-    await refreshAll();
+
+    if (typeof onLoginSuccess === "function") {
+      await onLoginSuccess();
+    }
   } catch (e) {
     console.error(e);
     clearToken();
@@ -33,6 +42,7 @@ export async function loadMe() {
 export function wireAuthUI() {
   on("loginForm3", "submit", async (e) => {
     e.preventDefault();
+
     const email = $("loginEmail3")?.value?.trim();
     const password = $("loginPassword3")?.value;
 
@@ -49,8 +59,8 @@ export function wireAuthUI() {
   });
 
   on("btnDemoFill3", "click", () => {
-    if ($("loginEmail3")) $("loginEmail3").value = "admin@example.com";
-    if ($("loginPassword3")) $("loginPassword3").value = "password";
+    if ($("loginEmail3")) $("loginEmail3").value = "admin@test.com";
+    if ($("loginPassword3")) $("loginPassword3").value = "test1234";
   });
 
   on("btnLogout3", "click", () => {
@@ -60,3 +70,4 @@ export function wireAuthUI() {
     loadMe();
   });
 }
+

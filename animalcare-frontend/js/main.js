@@ -1,7 +1,7 @@
 import { isoToday, api } from "./api.js";
 import { state } from "./state.js";
 import { on, $, setHTML } from "./dom.js";
-import { wireAuthUI, loadMe } from "./auth.js";
+import { wireAuthUI, loadMe, setOnLoginSuccess } from "./auth.js";
 import { loadTasksToday } from "./caretaker.js";
 import { loadAdminPanels } from "./admin.js";
 import { loadSupervisorQueue } from "./supervisor.js";
@@ -33,19 +33,22 @@ export async function refreshAll() {
   }
 
   // Supervisor queue
-  if (view === "supervisor" || state.currentUser?.role === "SUPERVISOR" || state.currentUser?.role === "ADMIN") {
+  if (
+    view === "supervisor" ||
+    state.currentUser?.role === "SUPERVISOR" ||
+    state.currentUser?.role === "ADMIN"
+  ) {
     await loadSupervisorQueue(date);
   }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // default date
   if ($("globalDate3")) $("globalDate3").value = isoToday();
 
-  // auth wiring
+  setOnLoginSuccess(refreshAll);
+
   wireAuthUI();
 
-  // global UI wiring
   on("btnRefresh3", "click", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
   });
@@ -56,7 +59,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
   });
 
-  // optional modal button
   on("btnOpenDetails3", "click", () => {
     if (!window.bootstrap) return;
     const el = $("detailsModal3");
