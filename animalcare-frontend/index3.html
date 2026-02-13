@@ -1,292 +1,556 @@
 <!doctype html>
-<html lang="en">
+<html lang="nl">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AnimalCare</title>
-
+  <title>AnimalCare - Dierenzorg Log</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <style>
+    /* Algemene stijl van je collega */
     body { background: #f5f7fb; }
     .brand-dot { width:10px; height:10px; border-radius:50%; background:#0d6efd; display:inline-block; margin-right:.5rem; }
     .card-compact { border: 1px solid rgba(0,0,0,.08); border-radius: 1rem; }
     .kpi { font-size: 1.35rem; font-weight: 700; }
     .muted { color: rgba(0,0,0,.6); }
-    .table thead th { color: rgba(0,0,0,.65); font-weight: 600; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+    /* Jouw admin-stijl voor de login */
+    .login-wrapper {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .login-card {
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      overflow: hidden;
+      width: 100%;
+      max-width: 450px;
+    }
+    .login-header {
+      background-color: #4a6fa5;
+      color: white;
+      padding: 1.5rem;
+      text-align: center;
+    }
+    .login-body {
+      padding: 2rem;
+      background-color: white;
+    }
+    .btn-login {
+      background-color: #4a6fa5;
+      color: white;
+      padding: 0.75rem;
+      font-weight: 600;
+      border: none;
+    }
+    .btn-login:hover {
+      background-color: #3a5a80;
+    }
+    .logo-icon {
+      font-size: 3rem;
+      color: #4a6fa5;
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    /* Jouw dashboard-stijl */
+    .sidebar {
+      background-color: #f8f9fa;
+      min-height: calc(100vh - 56px);
+      box-shadow: inset -1px 0 0 rgba(0,0,0,.1);
+    }
+    .sidebar .nav-link {
+      color: #333;
+      font-weight: 500;
+      padding: 0.75rem 1rem;
+      border-radius: 0.375rem;
+      margin-bottom: 0.25rem;
+    }
+    .sidebar .nav-link:hover {
+      background-color: #e9ecef;
+    }
+    .sidebar .nav-link.active {
+      background-color: #0d6efd;
+      color: white;
+    }
+    .sidebar .nav-link i {
+      margin-right: 0.5rem;
+    }
+    .badge-alert {
+      background-color: #dc3545;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { opacity:1; } 50% { opacity:0.7; } 100% { opacity:1; }
+    }
+    .task-card {
+      transition: transform 0.2s;
+      border-left: 4px solid #0d6efd;
+      margin-bottom: 0.5rem;
+    }
+    .task-urgent {
+      border-left-color: #dc3545;
+    }
+    .task-completed {
+      border-left-color: #198754;
+      opacity: 0.9;
+    }
+    .admin-only { display: none; }
   </style>
 </head>
-
 <body>
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-  <div class="container-fluid">
-    <span class="navbar-brand fw-semibold">
-      <span class="brand-dot"></span> AnimalCare
-    </span>
+  <!-- Navigatiebalk (altijd zichtbaar) -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <span class="navbar-brand fw-semibold">
+        <span class="brand-dot"></span> Dierenzorg Log
+      </span>
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge text-bg-secondary" id="userRoleBadge">Niet ingelogd</span>
+        <button class="btn btn-outline-light btn-sm d-none" id="btnLogout3">Uitloggen</button>
+      </div>
+    </div>
+  </nav>
 
-    <div class="d-flex align-items-center gap-2">
-      <span class="badge text-bg-secondary" id="roleBadge3">Not logged in</span>
-      <button class="btn btn-outline-light btn-sm d-none" id="btnLogout3">Logout</button>
+  <!-- LOGIN VIEW (wordt verborgen na login) -->
+  <div id="viewLogin3" class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <h1 class="h3 mb-0">Dierenzorg Log Systeem</h1>
+        <p class="mb-0">Registreer en beheer dierenzorg taken</p>
+      </div>
+      <div class="login-body">
+        <div class="logo-icon">
+          <i class="bi bi-heart-pulse"></i>
+        </div>
+
+        <div id="alertBox3" class="alert alert-danger d-none" role="alert"></div>
+
+        <form id="loginForm3">
+          <div class="mb-3">
+            <label for="loginEmail3" class="form-label">Email</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+              <input type="email" class="form-control" id="loginEmail3" placeholder="email@example.com" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label for="loginPassword3" class="form-label">Wachtwoord</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock"></i></span>
+              <input type="password" class="form-control" id="loginPassword3" placeholder="wachtwoord" required>
+            </div>
+          </div>
+          <div class="mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="rememberMe">
+            <label class="form-check-label" for="rememberMe">Onthoud mij</label>
+          </div>
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-login">Inloggen</button>
+          </div>
+          <div class="text-center mt-3">
+            <a href="#" class="text-decoration-none">Wachtwoord vergeten?</a>
+          </div>
+          <hr class="my-4">
+          <div class="text-center">
+            <p class="mb-2">Demo accounts:</p>
+            <div class="d-flex gap-2 justify-content-center">
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDemoFill3">Demo Admin</button>
+            </div>
+            <small class="text-muted">(admin2@test.com / test1234)</small>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</nav>
 
-<div class="container py-4">
-
-  <div id="alertBox3" class="alert d-none" role="alert"></div>
-
-  <!-- LOGIN -->
-  <div id="viewLogin3" class="row justify-content-center">
-    <div class="col-lg-6 col-xl-5">
-      <div class="card card-compact shadow-sm">
-        <div class="card-body p-4">
-          <h4 class="mb-1">Sign in</h4>
-          <div class="muted mb-4">Access tasks, admin overview, and supervisor approvals.</div>
-
-          <form id="loginForm3" class="row g-3">
-            <div class="col-12">
-              <label class="form-label">Email</label>
-              <input class="form-control" id="loginEmail3" placeholder="email@example.com" required />
-            </div>
-            <div class="col-12">
-              <label class="form-label">Password</label>
-              <input class="form-control" id="loginPassword3" type="password" required />
-            </div>
-            <div class="col-12 d-flex gap-2">
-              <button class="btn btn-primary w-100" type="submit">Login</button>
-              <button class="btn btn-outline-secondary" type="button" id="btnDemoFill3">Register</button>
-            </div>
-          </form>
-
-          <div class="small muted mt-3">
-            Run via Live Server or <code>npx serve .</code> to avoid browser restrictions.
-          </div>
+  <!-- DASHBOARD VIEW (verborgen tot login) -->
+  <div id="viewApp3" class="d-none container-fluid">
+    <div class="row">
+      <!-- Sidebar (statisch, admin-items worden via JS getoond) -->
+      <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+        <div class="pt-3">
+          <ul class="nav flex-column">
+            <li class="nav-item"><a class="nav-link" href="#" id="dashboardLink"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="tasksLink"><i class="bi bi-list-check"></i> Taken <span class="badge badge-alert rounded-pill float-end">3</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="inventoryLink"><i class="bi bi-box-seam"></i> Voorraad <span class="badge bg-warning rounded-pill float-end">!</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="observationsLink"><i class="bi bi-eye"></i> Observaties</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="manualLink"><i class="bi bi-book"></i> Handleiding</a></li>
+            <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Snel acties</h6></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Snelle log</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#photoUploadModal"><i class="bi bi-camera"></i> Foto uploaden</a></li>
+            <li class="nav-item mt-4 admin-only"><h6 class="sidebar-heading px-3 text-muted">Admin tools</h6></li>
+            <li class="nav-item admin-only"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#sendSummaryModal"><i class="bi bi-envelope"></i> Log samenvatting</a></li>
+            <li class="nav-item admin-only"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#systemReportModal"><i class="bi bi-file-text"></i> Rapport</a></li>
+          </ul>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- APP -->
-  <div id="viewApp3" class="d-none">
+      <!-- Main content -->
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 pt-3">
+        <!-- Header met titel en knoppen (dynamisch via JS) -->
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2" id="pageTitle">Dashboard</h1>
+          <div class="btn-toolbar mb-2 mb-md-0" id="headerButtons"></div>
+        </div>
 
-    <!-- Header -->
-    <div class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-3">
-      <div>
-        <h2 class="mb-1" id="pageTitle3">Dashboard</h2>
-        <div class="muted" id="pageSubtitle3">Professional backend-connected mockup.</div>
-      </div>
-
-      <div class="d-flex flex-wrap align-items-center gap-2">
-        <select class="form-select" style="max-width: 220px;" id="roleView3">
-          <option value="auto">Auto (based on login)</option>
-          <option value="caretaker">Caretaker view</option>
-          <option value="admin">Admin view</option>
-          <option value="supervisor">Supervisor view</option>
+        <!-- Extra elementen die main.js nodig heeft (verborgen, maar aanwezig) -->
+        <select class="form-select d-none" id="roleView3">
+          <option value="auto">Auto</option>
+          <option value="caretaker">Caretaker</option>
+          <option value="admin">Admin</option>
+          <option value="supervisor">Supervisor</option>
         </select>
+        <input type="date" class="form-control d-none" id="globalDate3" />
+        <button class="btn btn-outline-primary d-none" id="btnRefresh3">Refresh</button>
 
-        <input type="date" class="form-control" style="max-width: 190px;" id="globalDate3" />
-        <button class="btn btn-outline-primary" id="btnRefresh3">Refresh</button>
-      </div>
-    </div>
-
-    <!-- KPI Row -->
-    <div class="row g-3 mb-3">
-      <div class="col-md-3">
-        <div class="card card-compact shadow-sm">
-          <div class="card-body">
-            <div class="muted small">Backend</div>
-            <div class="d-flex align-items-center justify-content-between">
-              <div class="kpi" id="kpiBackend3">—</div>
-              <span class="badge text-bg-secondary" id="badgeBackend3">Unknown</span>
-            </div>
-            <div class="small muted mono">/health</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card card-compact shadow-sm">
-          <div class="card-body">
-            <div class="muted small">Tasks completed</div>
-            <div class="kpi" id="kpiCompleted3">—</div>
-            <div class="small muted">Caretaker daily progress</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card card-compact shadow-sm">
-          <div class="card-body">
-            <div class="muted small">Missed tasks</div>
-            <div class="kpi" id="kpiMissed3">—</div>
-            <div class="small muted">Admin indicator</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card card-compact shadow-sm">
-          <div class="card-body">
-            <div class="muted small">Inventory alerts</div>
-            <div class="kpi" id="kpiAlerts3">—</div>
-            <div class="small muted">WARN + CRITICAL items</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Main grid -->
-    <div class="row g-3">
-
-      <!-- Left: Tasks (Caretaker) -->
-      <div class="col-lg-7">
-        <div class="card card-compact shadow-sm">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <div>
-                <div class="fw-semibold">Today’s Tasks</div>
-                <div class="small muted" id="tasksHint3">Log tasks quickly (uses /tasks/today + /daily-logs).</div>
-              </div>
-              <span class="badge text-bg-light border" id="tasksCount3">—</span>
-            </div>
-
-            <div class="table-responsive">
-              <table class="table table-sm align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Task</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th style="width: 260px;">Log</th>
-                  </tr>
-                </thead>
-                <tbody id="tasksTable3"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Right: Admin + Supervisor panels -->
-      <div class="col-lg-5">
-        <div class="row g-3">
-
-          <!-- Inventory warnings -->
-          <div class="col-12">
-            <div class="card card-compact shadow-sm">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div class="fw-semibold">Inventory Warnings</div>
-                  <span class="badge text-bg-light border mono">/admin/inventory-warnings</span>
-                </div>
-
-                <div class="table-responsive">
-                  <table class="table table-sm align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Item</th>
-                        <th>Status</th>
-                        <th class="text-end">Stock</th>
-                      </tr>
-                    </thead>
-                    <tbody id="warningsTable3"></tbody>
-                  </table>
-                </div>
-
-                <div class="small muted mt-2" id="warningsNote3">Suggested order shown in details below.</div>
-              </div>
+        <!-- CARETAKER VIEW -->
+        <div id="caretakerView">
+          <!-- Alert -->
+          <div class="alert alert-warning d-flex align-items-center">
+            <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+            <div>
+              <h5 class="alert-heading mb-1">Waarschuwing: Varkens niet gevoerd gisteren</h5>
+              <p class="mb-0">Controleer of de varkens vandaag zijn gevoerd.</p>
             </div>
           </div>
 
-          <!-- Missed tasks + approvals -->
-          <div class="col-12">
-            <div class="card card-compact shadow-sm">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <div class="fw-semibold">Admin & Supervisor</div>
-                  <span class="badge text-bg-light border mono">/admin/* + /supervisor/*</span>
-                </div>
-
-                <div class="mb-3">
-                  <div class="small muted">Missed tasks (selected date)</div>
+          <!-- KPI-rij (dynamisch gevuld door main.js) -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body">
+                  <div class="text-muted small">Backend status</div>
                   <div class="d-flex align-items-center justify-content-between">
-                    <div class="kpi" id="missedCount3">—</div>
-                    <button class="btn btn-sm btn-outline-secondary" id="btnOpenDetails3">Details</button>
+                    <div class="kpi" id="kpiBackend3">—</div>
+                    <span class="badge text-bg-secondary" id="badgeBackend3">Onbekend</span>
                   </div>
                 </div>
-
-                <div>
-                  <div class="small muted mb-2">Supervisor queue (PENDING)</div>
-                  <div id="supQueue3" class="d-grid gap-2"></div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body">
+                  <div class="text-muted small">Taken voltooid</div>
+                  <div class="kpi" id="kpiCompleted3">—</div>
                 </div>
-
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body">
+                  <div class="text-muted small">Gemiste taken</div>
+                  <div class="kpi" id="kpiMissed3">—</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body">
+                  <div class="text-muted small">Voorraadwaarschuwingen</div>
+                  <div class="kpi" id="kpiAlerts3">—</div>
+                </div>
               </div>
             </div>
           </div>
 
-        </div>
-      </div>
-
-      <!-- Full-width: Admin daily overview -->
-      <div class="col-12">
-        <div class="card card-compact shadow-sm">
-          <div class="card-body">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-              <div>
-                <div class="fw-semibold">Daily Overview</div>
-                <div class="small muted" id="overviewTotals3">—</div>
+          <!-- Twee kolommen: taken en rechter paneel -->
+          <div class="row g-3">
+            <div class="col-lg-7">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body">
+                  <h5 class="mb-3"><i class="bi bi-list-task me-2"></i>Vandaag's taken</h5>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Taak</th>
+                          <th>Categorie</th>
+                          <th>Status</th>
+                          <th style="width: 260px;">Log</th>
+                        </tr>
+                      </thead>
+                      <tbody id="tasksTable3"></tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
-              <span class="badge text-bg-light border mono">/admin/daily-overview</span>
             </div>
+            <div class="col-lg-5">
+              <!-- Voorraadwaarschuwingen -->
+              <div class="card card-compact shadow-sm mb-3">
+                <div class="card-body">
+                  <h5 class="mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Voorraadwaarschuwingen</h5>
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                      <thead>
+                        <tr>
+                          <th>Item</th>
+                          <th>Status</th>
+                          <th class="text-end">Voorraad</th>
+                        </tr>
+                      </thead>
+                      <tbody id="warningsTable3"></tbody>
+                    </table>
+                  </div>
+                  <div class="small muted mt-2" id="warningsNote3">Voorgestelde bestelling in details.</div>
+                </div>
+              </div>
 
-            <div class="table-responsive">
-              <table class="table table-sm align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Task</th>
-                    <th>Status</th>
-                    <th>Logged by</th>
-                  </tr>
-                </thead>
-                <tbody id="overviewTable3"></tbody>
-              </table>
+              <!-- Admin & Supervisor paneel -->
+              <div class="card card-compact shadow-sm">
+                <div class="card-body">
+                  <h5 class="mb-3"><i class="bi bi-shield me-2"></i>Admin & Supervisor</h5>
+                  <div class="mb-3">
+                    <div class="small muted">Gemiste taken</div>
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div class="kpi" id="missedCount3">—</div>
+                      <button class="btn btn-sm btn-outline-secondary" id="btnOpenDetails3">Details</button>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="small muted mb-2">Supervisor wachtrij</div>
+                    <div id="supQueue3" class="d-grid gap-2"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dagelijkse overzicht (voor admin) -->
+          <div class="card card-compact shadow-sm mt-4" id="dailyOverviewCard">
+            <div class="card-body">
+              <h5 class="mb-3"><i class="bi bi-calendar-day me-2"></i>Dagelijks overzicht</h5>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead>
+                    <tr>
+                      <th>Taak</th>
+                      <th>Status</th>
+                      <th>Gelogd door</th>
+                    </tr>
+                  </thead>
+                  <tbody id="overviewTable3"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recente activiteit (statisch voor caretaker) -->
+          <div class="card card-compact shadow-sm mt-4">
+            <div class="card-body">
+              <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Recente activiteit</h5>
+              <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                  <thead>
+                    <tr><th>Tijd</th><th>Actie</th><th>Uitvoerder</th><th>Details</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>09:15</td><td><span class="badge bg-success">Taak voltooid</span></td><td>Jan Jansen</td><td>Kippenhok</td></tr>
+                    <tr><td>08:45</td><td><span class="badge bg-info">Observatie</span></td><td>Piet Pietersen</td><td>Varken #3</td></tr>
+                    <tr><td>08:30</td><td><span class="badge bg-primary">Voorraad</span></td><td>Admin</td><td>Konijnenvoer +25kg</td></tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-    </div><!-- /row -->
-
-    <!-- Details modal -->
-    <div class="modal fade" id="detailsModal3" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Details</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <!-- ADMIN VIEW (identiek aan caretaker, maar met andere accenten; wordt getoond via rol) -->
+        <div id="adminView" style="display: none;">
+          <!-- KPI-rij voor admin (andere labels) -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body text-center">
+                  <h6>Actieve gebruikers</h6>
+                  <h2 class="mb-0" id="adminActiveUsers">8/12</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body text-center">
+                  <h6>Voltooide taken</h6>
+                  <h2 class="mb-0" id="adminTasksCompleted">64%</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body text-center">
+                  <h6>Waarschuwingen</h6>
+                  <h2 class="mb-0" id="adminWarnings">7</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body text-center">
+                  <h6>Voorraad niveau</h6>
+                  <h2 class="mb-0" id="adminStockLevel">42%</h2>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div class="modal-body">
-            <h6 class="mb-2">Missed tasks</h6>
-            <div id="modalMissed3" class="mb-4"></div>
-
-            <h6 class="mb-2">Inventory warnings</h6>
-            <div id="modalWarnings3"></div>
+          <!-- Dagelijkse overzicht (zelfde tabel als hierboven) -->
+          <div class="card card-compact shadow-sm mb-4">
+            <div class="card-body">
+              <h5 class="mb-3"><i class="bi bi-calendar-day me-2"></i>Dagelijkse overzicht</h5>
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr><th>Taak</th><th>Verantwoordelijke</th><th>Status</th><th>Acties</th></tr>
+                  </thead>
+                  <tbody id="adminOverviewTable">
+                    <tr><td>Varkens voeren</td><td>Jan Jansen</td><td><span class="badge bg-danger">Niet gedaan</span></td><td><button class="btn btn-sm btn-outline-warning"><i class="bi bi-bell"></i></button></td></tr>
+                    <tr><td>Kippenhok schoonmaken</td><td>Piet Pietersen</td><td><span class="badge bg-success">Voltooid</span></td><td><button class="btn btn-sm btn-outline-success"><i class="bi bi-eye"></i></button></td></tr>
+                    <tr><td>Dieren observatie</td><td>Alle</td><td><span class="badge bg-warning">Bezig</span></td><td><button class="btn btn-sm btn-outline-info">Check</button></td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
-          <div class="modal-footer">
-            <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <!-- Systeem instellingen en statistieken -->
+          <div class="row g-3">
+            <div class="col-lg-6">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body">
+                  <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Systeem instellingen</h5>
+                  <div class="list-group list-group-flush">
+                    <a href="#" class="list-group-item list-group-item-action">Alarminstellingen</a>
+                    <a href="#" class="list-group-item list-group-item-action">Gebruikersbeheer</a>
+                    <a href="#" class="list-group-item list-group-item-action">Voerhoeveelheden</a>
+                    <a href="#" class="list-group-item list-group-item-action">Email instellingen</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="card card-compact shadow-sm">
+                <div class="card-body">
+                  <h5 class="mb-3"><i class="bi bi-graph-up me-2"></i>Statistieken</h5>
+                  <div class="mb-3">
+                    <h6>Taak voltooiing</h6>
+                    <div class="progress" style="height:20px"><div class="progress-bar bg-success" style="width:64%">64%</div></div>
+                  </div>
+                  <div class="mb-3">
+                    <h6>Voorraad waarschuwingen</h6>
+                    <div class="progress" style="height:20px"><div class="progress-bar bg-warning" style="width:30%">3 producten</div></div>
+                  </div>
+                  <button class="btn btn-outline-primary w-100 mt-2" data-bs-toggle="modal" data-bs-target="#systemReportModal">
+                    <i class="bi bi-file-text me-2"></i>Rapport genereren
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
+
+          <!-- Recente observaties -->
+          <div class="card card-compact shadow-sm mt-4">
+            <div class="card-body">
+              <h5 class="mb-3"><i class="bi bi-eye me-2"></i>Recente observaties</h5>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6>Varken #3 minder actief</h6>
+                      <p class="small">Varken #3 lijkt minder actief.</p>
+                      <div class="d-flex justify-content-between">
+                        <small class="text-muted">Piet - 08:45</small>
+                        <button class="btn btn-sm btn-outline-info">Behandel</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="card">
+                    <div class="card-body">
+                      <h6>Kip met kale plek</h6>
+                      <p class="small">Kip hok B kale plek.</p>
+                      <div class="d-flex justify-content-between">
+                        <small class="text-muted">Jan - gisteren</small>
+                        <button class="btn btn-sm btn-outline-success">Afgerond</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- MODALS (van jouw dashboard) -->
+  <div class="modal fade" id="quickLogModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Snelle log toevoegen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Taak</label><select class="form-select"><option>Varkens voeren</option><option>Kippenhok schoonmaken</option></select></div><div class="mb-3"><label class="form-label">Hoeveelheid (gram)</label><input type="number" class="form-control"></div><div class="mb-3"><label class="form-label">Opmerkingen</label><textarea class="form-control" rows="2"></textarea></div><div class="mb-3 form-check"><input type="checkbox" class="form-check-input"><label class="form-check-label">Foto toevoegen</label></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button><button class="btn btn-primary" onclick="alert('Log toegevoegd!')">Toevoegen</button></div></div></div></div>
+  <div class="modal fade" id="photoUploadModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Foto uploaden</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Beschrijving</label><input type="text" class="form-control"></div><div class="mb-3"><label class="form-label">Dier/Locatie</label><select class="form-select"><option>Varkens</option><option>Kippen</option></select></div><div class="mb-3"><label class="form-label">Foto</label><input class="form-control" type="file" accept="image/*"></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button><button class="btn btn-primary" onclick="alert('Foto geüpload!')">Uploaden</button></div></div></div></div>
+  <div class="modal fade" id="newObservationModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Nieuwe observatie</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Dier/Groep</label><select class="form-select"><option>Varkens</option><option>Kippen</option></select></div><div class="mb-3"><label class="form-label">Categorie</label><select class="form-select"><option>Gedrag</option><option>Gezondheid</option></select></div><div class="mb-3"><label class="form-label">Beschrijving</label><textarea class="form-control" rows="3"></textarea></div><div class="mb-3"><label class="form-label">Foto's</label><input type="file" class="form-control" accept="image/*" multiple></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button><button class="btn btn-primary" onclick="alert('Observatie opgeslagen!')">Opslaan</button></div></div></div></div>
+  <div class="modal fade" id="sendSummaryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Log samenvatting versturen</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Ontvangers</label><input type="text" class="form-control" value="admin@dierenzorg.nl"></div><div class="mb-3"><label class="form-label">Periode</label><select class="form-select"><option>Vandaag</option><option>Afgelopen week</option></select></div><div class="form-check mb-3"><input type="checkbox" class="form-check-input"><label class="form-check-label">Dagelijks automatisch</label></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button><button class="btn btn-primary" onclick="alert('Samenvatting verstuurd!')">Versturen</button></div></div></div></div>
+  <div class="modal fade" id="systemReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Systeemrapport</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Rapport type</label><select class="form-select"><option>Maandrapport</option><option>Weekrapport</option></select></div><div class="mb-3"><label class="form-label">Periode</label><div class="row"><div class="col-md-6"><input type="date" class="form-control" value="2026-01-13"></div><div class="col-md-6"><input type="date" class="form-control" value="2026-02-13"></div></div></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button><button class="btn btn-primary" onclick="alert('Rapport gegenereerd!')">Genereren</button></div></div></div></div>
+
+  <!-- Details modal (voor main.js) -->
+  <div class="modal fade" id="detailsModal3" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <h6 class="mb-2">Gemiste taken</h6>
+          <div id="modalMissed3" class="mb-4"></div>
+          <h6 class="mb-2">Voorraadwaarschuwingen</h6>
+          <div id="modalWarnings3"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Sluiten</button>
         </div>
       </div>
     </div>
+  </div>
 
-  </div><!-- /app -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="./js/main.js"></script>
+  <script>
+    // Demo Admin knop: vult credentials en submit het formulier
+    document.getElementById('btnDemoFill3').addEventListener('click', function() {
+      document.getElementById('loginEmail3').value = 'admin2@test.com';
+      document.getElementById('loginPassword3').value = 'test1234';
+      document.getElementById('loginForm3').requestSubmit();
+    });
 
-</div><!-- /container -->
+    // Rol omschakelen via URL-parameter (voor demo doeleinden)
+    const urlParams = new URLSearchParams(window.location.search);
+    let userRole = urlParams.get('role') || 'caretaker';
+    const isAdmin = userRole === 'admin';
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script type="module" src="./js/main.js"></script>
+    // Deze functie wordt overschreven door main.js na login, maar voor nu:
+    document.getElementById('userRoleBadge').innerText = isAdmin ? 'Administrator' : 'Dierenverzorger';
+    document.getElementById('pageTitle').innerText = isAdmin ? 'Admin Dashboard' : 'Dashboard';
+    document.getElementById('headerButtons').innerHTML = isAdmin
+      ? '<button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#sendSummaryModal"><i class="bi bi-envelope me-1"></i>Log samenvatting</button>'
+      : '<button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle me-1"></i>Snelle log</button>';
+    document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
+    document.getElementById('caretakerView').style.display = isAdmin ? 'none' : 'block';
+    document.getElementById('adminView').style.display = isAdmin ? 'block' : 'none';
+
+    // Simpele completeTask functie voor de statische taken (optioneel)
+    function completeTask(id) {
+      let t = document.getElementById('task-' + id);
+      if (t) {
+        t.classList.add('task-completed');
+        t.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle-fill me-2"></i>Taak voltooid!</div>';
+      }
+    }
+  </script>
 </body>
 </html>
