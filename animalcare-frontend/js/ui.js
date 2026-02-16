@@ -2,7 +2,7 @@ import { $, setHTML, setText } from "./dom.js";
 import { state } from "./state.js";
 
 export function setAlert(type, msg) {
-  const box = $("alertBox3");
+  const box = $("alertBox");
   if (!box) return alert(msg);
 
   const icon =
@@ -24,7 +24,7 @@ export function badgeForStatus(status) {
 }
 
 export function getRoleView() {
-  const v = $("roleView3")?.value;
+  const v = $("roleView")?.value;
   if (v && v !== "auto") return v;
 
   const r = state.currentUser?.role;
@@ -52,13 +52,13 @@ export function setHeader(view) {
     caretaker: { title: "Caretaker Dashboard", subtitle: "Log dagelijkse taken snel en accuraat." }
   };
 
-  const t = titles[view] || { title: "Dashboard", subtitle: "Backend-gekoppelde mockup." };
-  setText("pageTitle3", t.title);
-  setText("pageSubtitle3", t.subtitle);
+  const t = titles[view] || { title: "Dashboard" };
+  setText("pageTitle", t.title);
+  setText("pageSubtitle", t.subtitle);
 }
 
 export function setRoleBadge() {
-  const badge = $("roleBadge3");
+  const badge = $("roleBadge");
   if (!badge) return;
 
   if (!state.currentUser) {

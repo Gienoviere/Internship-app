@@ -8,14 +8,14 @@ import { loadSupervisorQueue } from "./supervisor.js";
 import { getRoleView, updateRoleSpecificUI, setHeader, setRoleBadge, setAlert } from "./ui.js";
 
 export async function refreshAll() {
-  const date = $("globalDate3")?.value || isoToday();
+  const date = $("globalDate")?.value || isoToday();
 
   // Backend badge
   try {
     await api("/health");
-    setHTML("kpiBackend3", `<span class="badge bg-success">Online</span>`);
+    setHTML("kpiBackend", `<span class="badge bg-success">Online</span>`);
   } catch {
-    setHTML("kpiBackend3", `<span class="badge bg-danger">Offline</span>`);
+    setHTML("kpiBackend", `<span class="badge bg-danger">Offline</span>`);
   }
 
   // Always: caretaker tasks
@@ -43,25 +43,25 @@ export async function refreshAll() {
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if ($("globalDate3")) $("globalDate3").value = isoToday();
+  if ($("globalDate")) $("globalDate").value = isoToday();
 
   setOnLoginSuccess(refreshAll);
 
   wireAuthUI();
 
-  on("btnRefresh3", "click", async () => {
+  on("btnRefresh", "click", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
   });
-  on("roleView3", "change", async () => {
+  on("roleView", "change", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
   });
-  on("globalDate3", "change", async () => {
+  on("globalDate", "change", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
   });
 
-  on("btnOpenDetails3", "click", () => {
+  on("btnOpenDetails", "click", () => {
     if (!window.bootstrap) return;
-    const el = $("detailsModal3");
+    const el = $("detailsModal");
     if (!el) return;
     new bootstrap.Modal(el).show();
   });

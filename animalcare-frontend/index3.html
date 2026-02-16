@@ -6,103 +6,9 @@
   <title>AnimalCare - Animal Care Log</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  <style>
-    /* General styles from colleague */
-    body { background: #f5f7fb; }
-    .brand-dot { width:10px; height:10px; border-radius:50%; background:#0d6efd; display:inline-block; margin-right:.5rem; }
-    .card-compact { border: 1px solid rgba(0,0,0,.08); border-radius: 1rem; }
-    .kpi { font-size: 1.35rem; font-weight: 700; }
-    .muted { color: rgba(0,0,0,.6); }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-
-    /* Your admin login style */
-    .login-wrapper {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1rem;
-    }
-    .login-card {
-      border-radius: 15px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      overflow: hidden;
-      width: 100%;
-      max-width: 450px;
-    }
-    .login-header {
-      background-color: #4a6fa5;
-      color: white;
-      padding: 1.5rem;
-      text-align: center;
-    }
-    .login-body {
-      padding: 2rem;
-      background-color: white;
-    }
-    .btn-login {
-      background-color: #4a6fa5;
-      color: white;
-      padding: 0.75rem;
-      font-weight: 600;
-      border: none;
-    }
-    .btn-login:hover {
-      background-color: #3a5a80;
-    }
-    .logo-icon {
-      font-size: 3rem;
-      color: #4a6fa5;
-      text-align: center;
-      margin-bottom: 1rem;
-    }
-
-    /* Your dashboard style */
-    .sidebar {
-      background-color: #f8f9fa;
-      min-height: calc(100vh - 56px);
-      box-shadow: inset -1px 0 0 rgba(0,0,0,.1);
-    }
-    .sidebar .nav-link {
-      color: #333;
-      font-weight: 500;
-      padding: 0.75rem 1rem;
-      border-radius: 0.375rem;
-      margin-bottom: 0.25rem;
-    }
-    .sidebar .nav-link:hover {
-      background-color: #e9ecef;
-    }
-    .sidebar .nav-link.active {
-      background-color: #0d6efd;
-      color: white;
-    }
-    .sidebar .nav-link i {
-      margin-right: 0.5rem;
-    }
-    .badge-alert {
-      background-color: #dc3545;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0% { opacity:1; } 50% { opacity:0.7; } 100% { opacity:1; }
-    }
-    .task-card {
-      transition: transform 0.2s;
-      border-left: 4px solid #0d6efd;
-      margin-bottom: 0.5rem;
-    }
-    .task-urgent {
-      border-left-color: #dc3545;
-    }
-    .task-completed {
-      border-left-color: #198754;
-      opacity: 0.9;
-    }
-    .admin-only { display: none; }
-  </style>
+  <link rel="stylesheet" href="./css/app.css">
 </head>
+
 <body>
   <!-- Navigation bar (always visible) -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -491,11 +397,11 @@
   </div>
 
   <!-- MODALS (from your dashboard) -->
-  <div class="modal fade" id="quickLogModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Add quick log</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Task</label><select class="form-select"><option>Feed pigs</option><option>Clean chicken coop</option></select></div><div class="mb-3"><label class="form-label">Amount (grams)</label><input type="number" class="form-control"></div><div class="mb-3"><label class="form-label">Notes</label><textarea class="form-control" rows="2"></textarea></div><div class="mb-3 form-check"><input type="checkbox" class="form-check-input"><label class="form-check-label">Add photo</label></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="alert('Log added!')">Add</button></div></div></div></div>
-  <div class="modal fade" id="photoUploadModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Upload photo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Description</label><input type="text" class="form-control"></div><div class="mb-3"><label class="form-label">Animal/Location</label><select class="form-select"><option>Pigs</option><option>Chickens</option></select></div><div class="mb-3"><label class="form-label">Photo</label><input class="form-control" type="file" accept="image/*"></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="alert('Photo uploaded!')">Upload</button></div></div></div></div>
+  <div class="modal fade" id="quickLogModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Add quick log</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Task</label><select class="form-select"><option>Feed pigs</option><option>Clean chicken coop</option></select></div><div class="mb-3"><label class="form-label">Amount (grams)</label><input type="number" class="form-control"></div><div class="mb-3"><label class="form-label">Notes</label><textarea class="form-control" rows="2"></textarea></div><div class="mb-3 form-check"><input type="checkbox" class="form-check-input"><label class="form-check-label">Add photo</label></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btnQuickLogSubmit">Add</button></div></div></div></div>
+  <div class="modal fade" id="photoUploadModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Upload photo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Description</label><input type="text" class="form-control"></div><div class="mb-3"><label class="form-label">Animal/Location</label><select class="form-select"><option>Pigs</option><option>Chickens</option></select></div><div class="mb-3"><label class="form-label">Photo</label><input class="form-control" type="file" accept="image/*"></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btnPhotoUploadSubmit">Upload</button></div></div></div></div>
   <div class="modal fade" id="newObservationModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">New observation</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Animal/Group</label><select class="form-select"><option>Pigs</option><option>Chickens</option></select></div><div class="mb-3"><label class="form-label">Category</label><select class="form-select"><option>Behavior</option><option>Health</option></select></div><div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" rows="3"></textarea></div><div class="mb-3"><label class="form-label">Photos</label><input type="file" class="form-control" accept="image/*" multiple></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="alert('Observation saved!')">Save</button></div></div></div></div>
-  <div class="modal fade" id="sendSummaryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Send log summary</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Recipients</label><input type="text" class="form-control" value="admin@animalcare.nl"></div><div class="mb-3"><label class="form-label">Period</label><select class="form-select"><option>Today</option><option>Last week</option></select></div><div class="form-check mb-3"><input type="checkbox" class="form-check-input"><label class="form-check-label">Send automatically daily</label></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="alert('Summary sent!')">Send</button></div></div></div></div>
-  <div class="modal fade" id="systemReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">System report</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Report type</label><select class="form-select"><option>Monthly report</option><option>Weekly report</option></select></div><div class="mb-3"><label class="form-label">Period</label><div class="row"><div class="col-md-6"><input type="date" class="form-control" value="2026-01-13"></div><div class="col-md-6"><input type="date" class="form-control" value="2026-02-13"></div></div></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="alert('Report generated!')">Generate</button></div></div></div></div>
+  <div class="modal fade" id="sendSummaryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Send log summary</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Recipients</label><input type="text" class="form-control" value="admin@animalcare.nl"></div><div class="mb-3"><label class="form-label">Period</label><select class="form-select"><option>Today</option><option>Last week</option></select></div><div class="form-check mb-3"><input type="checkbox" class="form-check-input"><label class="form-check-label">Send automatically daily</label></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btnSendSummarySubmit">Send</button></div></div></div></div>
+  <div class="modal fade" id="systemReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">System report</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Report type</label><select class="form-select"><option>Monthly report</option><option>Weekly report</option></select></div><div class="mb-3"><label class="form-label">Period</label><div class="row"><div class="col-md-6"><input type="date" class="form-control" value="2026-01-13"></div><div class="col-md-6"><input type="date" class="form-control" value="2026-02-13"></div></div></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btnSystemReportSubmit">Generate</button></div></div></div></div>
 
   <!-- Details modal (for main.js) -->
   <div class="modal fade" id="detailsModal3" tabindex="-1" aria-hidden="true">
@@ -520,37 +426,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="./js/main.js"></script>
-  <script>
-    // Demo Admin button: fills credentials and submits form
-    document.getElementById('btnDemoFill3').addEventListener('click', function() {
-      document.getElementById('loginEmail3').value = 'admin2@test.com';
-      document.getElementById('loginPassword3').value = 'test1234';
-      document.getElementById('loginForm3').requestSubmit();
-    });
-
-    // Role switching via URL parameter (for demo purposes)
-    const urlParams = new URLSearchParams(window.location.search);
-    let userRole = urlParams.get('role') || 'caretaker';
-    const isAdmin = userRole === 'admin';
-
-    // These will be overridden by main.js after login, but for now:
-    document.getElementById('userRoleBadge').innerText = isAdmin ? 'Administrator' : 'Caretaker';
-    document.getElementById('pageTitle').innerText = isAdmin ? 'Admin Dashboard' : 'Dashboard';
-    document.getElementById('headerButtons').innerHTML = isAdmin
-      ? '<button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#sendSummaryModal"><i class="bi bi-envelope me-1"></i>Send summary</button>'
-      : '<button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle me-1"></i>Quick log</button>';
-    document.querySelectorAll('.admin-only').forEach(el => el.style.display = isAdmin ? 'block' : 'none');
-    document.getElementById('caretakerView').style.display = isAdmin ? 'none' : 'block';
-    document.getElementById('adminView').style.display = isAdmin ? 'block' : 'none';
-
-    // Simple completeTask function for static tasks (optional)
-    function completeTask(id) {
-      let t = document.getElementById('task-' + id);
-      if (t) {
-        t.classList.add('task-completed');
-        t.innerHTML = '<div class="alert alert-success mb-0"><i class="bi bi-check-circle-fill me-2"></i>Task completed!</div>';
-      }
-    }
-  </script>
+  <script src="./js/modals.js"></script>
+  
 </body>
 </html>
