@@ -11,6 +11,7 @@ const adminRoutes = require("./routes/admin");
 const inventoryRoutes = require("./routes/inventory");
 const supervisorRoutes = require("./routes/supervisor");
 //const inventoryWarnings = ("./admin/inventory-warnings");
+const observationsRoutes = require("./routes/observations");
 
 
 const app = express();
@@ -21,6 +22,10 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+//photo code
+const path = require("path");
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+
 // Routes
 app.use("/auth", authRoutes);
 app.use("/tasks", tasksRoutes);
@@ -30,6 +35,7 @@ app.use("/admin", adminRoutes);
 app.use("/inventory", inventoryRoutes);
 app.use("/supervisor", supervisorRoutes);
 //app.use("/inventory-warnings", inventoryWarnings);
+app.use("/observations", observationsRoutes);
 
 // Start server LAST
 const PORT = process.env.PORT || 3001;
