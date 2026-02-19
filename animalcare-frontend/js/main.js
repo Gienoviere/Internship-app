@@ -6,6 +6,8 @@ import { loadTasksToday } from "./caretaker.js";
 import { loadAdminPanels } from "./admin.js";
 import { loadSupervisorQueue } from "./supervisor.js";
 import { getRoleView, updateRoleSpecificUI, setHeader, setRoleBadge, setAlert } from "./ui.js";
+import { loadObservations, createObservation } from "./observations.js";
+
 
 export async function refreshAll() {
   const date = $("globalDate")?.value || isoToday();
@@ -20,6 +22,10 @@ export async function refreshAll() {
 
   // Always: caretaker tasks
   await loadTasksToday(date);
+
+  // Photo sections
+  await loadObservations(date);
+
 
   // View selection based on role
   const view = getRoleView();
@@ -65,6 +71,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (!el) return;
     new bootstrap.Modal(el).show();
   });
+
+  on("btnObsCreate3", "click", async () => {
+  try {
+    const date = $("globalDate3")?.value || isoToday();
+    await createObservation(date);
+    await loadObservations(date);
+  } catch (e) {
+    setAlert("danger", e.message);
+  }
+});
+
 
   await loadMe();
 });

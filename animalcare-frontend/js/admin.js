@@ -14,6 +14,9 @@ export async function loadAdminPanels(date) {
   state.last.warnings = warnings;
   state.last.overview = overview;
 
+  await loadCriticalObservations(date);
+
+
   // Missed KPI
   const missedCount = missed.missedCount ?? 0;
   setText("missedCount3", String(missedCount));
@@ -74,4 +77,25 @@ export async function loadAdminPanels(date) {
       ot.appendChild(row);
     });
   }
+
+  //Observation
+  async function loadCriticalObservations(date) {
+  const data = await api(`/admin/critical-observations?date=${date}`);
+
+  const countEl = document.getElementById("criticalObsCount3");
+  const listEl = document.getElementById("criticalObsList3");
+
+  if (!countEl || !listEl) return;
+
+  countEl.textContent = data.count;
+
+  listEl.innerHTML = data.items.length
+    ? data.items.map(o => `
+        <div class="alert alert-danger mb-1 p-2">
+          <strong>${o.title}</strong><br>
+          <small>${o.createdBy?.name || ""} – ${o.description || ""}</small>
+        </div>
+      `).join("")
+    : `<div class="text-muted small">No critical observations</div>`;
+}
 }
