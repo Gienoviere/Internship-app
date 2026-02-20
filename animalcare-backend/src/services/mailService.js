@@ -35,3 +35,36 @@ async function sendInventoryWarningEmail(items) {
 }
 
 module.exports = { sendInventoryWarningEmail };
+
+//Connection to outlook, gmail
+function requireEnv(name) {
+  const v = process.env[name];
+  if (!v) throw new Error(`Missing env var: ${name}`);
+  return v;
+}
+
+function getTransport() {
+  const user = requireEnv("MAIL_USER");
+  const pass = requireEnv("MAIL_PASS");
+
+  // Works for Gmail app password; adjust if you use another provider
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: { user, pass },
+  });
+}
+
+async function sendMail({ to, subject, text, html }) {
+  const transporter = getTransport();
+  const from = process.env.MAIL_USER;
+
+  await transporter.sendMail({
+    from,
+    to,
+    subject,
+    text,
+    html,
+  });
+}
+
+module.exports = { sendMail };

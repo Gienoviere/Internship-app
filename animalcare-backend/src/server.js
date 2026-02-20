@@ -13,6 +13,8 @@ const supervisorRoutes = require("./routes/supervisor");
 //const inventoryWarnings = ("./admin/inventory-warnings");
 const observationsRoutes = require("./routes/observations");
 const adminCriticalRoutes = require("./routes/adminCritical");
+const adminEmailRoutes = require("./routes/adminEmail");
+const adminExportRoutes = require("./routes/adminExport");
 
 
 const app = express();
@@ -38,6 +40,8 @@ app.use("/supervisor", supervisorRoutes);
 //app.use("/inventory-warnings", inventoryWarnings);
 app.use("/observations", observationsRoutes);
 app.use("/admin", adminCriticalRoutes);
+app.use("/admin", adminEmailRoutes);
+app.use("/admin", adminExportRoutes);
 
 // Start server LAST
 const PORT = process.env.PORT || 3001;
