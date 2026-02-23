@@ -1,6 +1,22 @@
 import { getToken, clearToken } from "./state.js";
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:3001").replace(/\/$/, "");
+const API_BASE_URL = (
+  (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE_URL)
+  || "http://localhost:3001"
+).replace(/\/$/, "");
+
+try {
+  const apiHost = new URL(API_BASE_URL).hostname;
+  const pageHost = location.hostname;
+
+  // If API points to localhost but page is on localhost too, it might still be wrong (team LAN backend case).
+  // So warn if API is localhost AND the user isn't running the backend locally.
+  if (apiHost === "localhost" && pageHost === "localhost") {
+    console.warn(`[API] API is set to localhost. If you're using a shared backend, run npm run dev:lan`);
+  }
+} catch {}
+
+console.log("API_BASE_URL =", API_BASE_URL);
 
 if (location.hostname !== "localhost" && API_BASE_URL.includes("localhost")) {
   console.warn(
@@ -43,3 +59,7 @@ export function isoToday() {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
+
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
+});

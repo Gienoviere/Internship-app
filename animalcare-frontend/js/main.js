@@ -74,9 +74,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     new bootstrap.Modal(el).show();
   });
 
-  on("btnObsCreate3", "click", async () => {
+  on("btnObsCreate", "click", async () => {
   try {
-    const date = $("globalDate3")?.value || isoToday();
+    const date = $("globalDate")?.value || isoToday();
     await createObservation(date);
     await loadObservations(date);
   } catch (e) {
