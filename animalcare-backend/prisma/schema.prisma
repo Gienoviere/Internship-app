@@ -29,6 +29,8 @@ model User {
   createdAt    DateTime   @default(now())
   logs         DailyLog[]
   reviewedLogs DailyLog[] @relation("ReviewedLogs")
+
+  observations Observation[] @relation("UserObservations")
 }
 
 model Task {
@@ -57,12 +59,12 @@ model DailyLog {
   quantityGrams Int?
   notes         String?
 
-   // supervisor workflow
+  // supervisor workflow
   approvalStatus ApprovalStatus @default(PENDING)
   supervisorNote String?
   reviewedAt     DateTime?
   reviewedById   Int?
-  reviewedBy     User? @relation("ReviewedLogs", fields: [reviewedById], references: [id])
+  reviewedBy     User?          @relation("ReviewedLogs", fields: [reviewedById], references: [id])
 
   taskId Int
   userId Int
@@ -83,13 +85,13 @@ model FeedItem {
   reorderRule String? // free text: "Chicken feed only per 25 bags of 20kg"
   active      Boolean @default(true)
 
-  stockGrams Int      @default(0) // current stock in grams
+  stockGrams Int @default(0) // current stock in grams
 
-  minOrderKg      Int?     // e.g. 500
-  orderMultipleKg Int?     // e.g. 500 (must order in multiples of this)
+  minOrderKg      Int? // e.g. 500
+  orderMultipleKg Int? // e.g. 500 (must order in multiples of this)
 
-  updatedAt  DateTime @updatedAt
-  createdAt  DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
 
   tasks     Task[]
   rations   FeedRation[]
@@ -126,8 +128,42 @@ model InventoryMovement {
 
   feedItem FeedItem @relation(fields: [feedItemId], references: [id])
 
+  @@unique([refType, refId])
   @@index([date])
   @@index([feedItemId])
+}
 
-  @@unique([refType, refId])
+model Observation {
+  id          Int      @id @default(autoincrement())
+  date        DateTime
+  title       String
+  description String?
+  severity    String   @default("INFO") // INFO | WARN | CRITICAL
+
+  animalTag   String? // optional: "Pig pen 1", "Chicken coop"
+  createdById Int
+  createdBy   User    @relation("UserObservations", fields: [createdById], references: [id])
+
+  photos ObservationPhoto[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+  @@index([createdById])
+}
+
+model ObservationPhoto {
+  id            Int         @id @default(autoincrement())
+  observationId Int
+  observation   Observation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+
+  filePath  String // "/uploads/obs/xxx.jpg"
+  fileName  String
+  mimeType  String
+  sizeBytes Int
+
+  createdAt DateTime @default(now())
+
+  @@index([observationId])
 }

@@ -2,6 +2,7 @@ import { api } from "./api.js";
 import { state } from "./state.js";
 import { $, setHTML, setText } from "./dom.js";
 import { badgeForStatus } from "./ui.js";
+import { setAlert } from "./ui.js";
 
 export async function loadAdminPanels(date) {
   const [missed, warnings, overview] = await Promise.all([
@@ -13,6 +14,9 @@ export async function loadAdminPanels(date) {
   state.last.missed = missed;
   state.last.warnings = warnings;
   state.last.overview = overview;
+
+  await loadCriticalObservations(date);
+
 
   // Missed KPI
   const missedCount = missed.missedCount ?? 0;
@@ -74,4 +78,62 @@ export async function loadAdminPanels(date) {
       ot.appendChild(row);
     });
   }
+
+  //Observation
+  async function loadCriticalObservations(date) {
+  const data = await api(`/admin/critical-observations?date=${date}`);
+
+  const countEl = document.getElementById("criticalObsCount3");
+  const listEl = document.getElementById("criticalObsList3");
+
+  if (!countEl || !listEl) return;
+
+  countEl.textContent = data.count;
+
+  listEl.innerHTML = data.items.length
+    ? data.items.map(o => `
+        <div class="alert alert-danger mb-1 p-2">
+          <strong>${o.title}</strong><br>
+          <small>${o.createdBy?.name || ""} – ${o.description || ""}</small>
+        </div>
+      `).join("")
+    : `<div class="text-muted small">No critical observations</div>`;
+    
+}
+}
+
+export function wireAdminActions() {
+  const btn = $("btnSendSummary3");
+  if (!btn) return;
+
+  btn.addEventListener("click", async () => {
+    const date = $("globalDate3")?.value;
+
+    if (!date) {
+      setAlert("danger", "Select a date first.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = "Sending...";
+
+    try {
+      const res = await api("/admin/send-daily-summary", {
+        method: "POST",
+        json: {
+          date,
+          lookbackDays: 14,
+          warnDays: 21,
+          criticalDays: 7
+        }
+      });
+
+      setAlert("success", `Email sent to ${res.sentTo}`);
+    } catch (err) {
+      setAlert("danger", err.message || "Failed to send email");
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-envelope"></i> Send Email';
+    }
+  });
 }
