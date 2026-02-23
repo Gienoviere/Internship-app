@@ -3,7 +3,6 @@ import { state } from "./state.js";
 import { $, setHTML, setText } from "./dom.js";
 import { badgeForStatus } from "./ui.js";
 import { setAlert } from "./ui.js";
-import { $ } from "./dom.js";
 
 export async function loadAdminPanels(date) {
   const [missed, warnings, overview] = await Promise.all([
