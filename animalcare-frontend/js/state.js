@@ -1,5 +1,4 @@
 export const state = {
-  apiBase: "http://localhost:3001",
   currentUser: null,
   last: {
     tasksToday: null,
