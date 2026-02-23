@@ -14,11 +14,12 @@
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
       <span class="navbar-brand fw-semibold">
-        <span class="brand-dot"></span> AnimalCare Log
+        <span class="brand-dot"></span> Dierenzorg Log
       </span>
-      <div class="d-flex align-items-center gap-2">
+      <!-- Badge en logout knop visueel verborgen, maar blijven bestaan voor JS functionaliteit -->
+      <div class="d-flex align-items-center gap-2 d-none">
         <span class="badge text-bg-secondary" id="userRoleBadge">Not logged in</span>
-        <button class="btn btn-outline-light btn-sm d-none" id="btnLogout3">Logout</button>
+        <button class="btn btn-outline-light btn-sm" id="btnLogout3">Logout</button>
       </div>
     </div>
   </nav>
@@ -78,21 +79,20 @@
   <!-- DASHBOARD VIEW (hidden until login) -->
   <div id="viewApp3" class="d-none container-fluid">
     <div class="row">
-      <!-- Sidebar (static, admin items toggled by JS) -->
+      <!-- Sidebar (aangepast naar screenshot) -->
       <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
         <div class="pt-3">
           <ul class="nav flex-column">
             <li class="nav-item"><a class="nav-link" href="#" id="dashboardLink"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" id="tasksLink"><i class="bi bi-list-check"></i> Tasks <span class="badge badge-alert rounded-pill float-end">3</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="#" id="inventoryLink"><i class="bi bi-box-seam"></i> Inventory <span class="badge bg-warning rounded-pill float-end">!</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="#" id="observationsLink"><i class="bi bi-eye"></i> Observations</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" id="manualLink"><i class="bi bi-book"></i> Manual</a></li>
-            <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Quick actions</h6></li>
-            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Quick log</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#photoUploadModal"><i class="bi bi-camera"></i> Upload photo</a></li>
-            <li class="nav-item mt-4 admin-only"><h6 class="sidebar-heading px-3 text-muted">Admin tools</h6></li>
-            <li class="nav-item admin-only"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#sendSummaryModal"><i class="bi bi-envelope"></i> Send summary</a></li>
-            <li class="nav-item admin-only"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#systemReportModal"><i class="bi bi-file-text"></i> Generate report</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="tasksLink"><i class="bi bi-list-check"></i> Taken <span class="badge badge-alert rounded-pill float-end">3</span></a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="inventoryLink"><i class="bi bi-box-seam"></i> Voorraad <i class="bi bi-exclamation-triangle-fill text-warning float-end"></i></a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="observationsLink"><i class="bi bi-eye"></i> Observaties</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" id="manualLink"><i class="bi bi-book"></i> Handleiding</a></li>
+            <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Snel acties</h6></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Snelle log</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#inventoryUpdateModal"><i class="bi bi-arrow-up-circle"></i> Voorraad updaten</a></li>
+            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#photoUploadModal"><i class="bi bi-camera"></i> Foto uploaden</a></li>
+            <!-- Admin tools verwijderd (niet in screenshot) -->
           </ul>
         </div>
       </div>
@@ -117,12 +117,12 @@
 
         <!-- CARETAKER VIEW -->
         <div id="caretakerView">
-          <!-- Alert -->
+          <!-- Alert in het Nederlands -->
           <div class="alert alert-warning d-flex align-items-center">
             <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
             <div>
-              <h5 class="alert-heading mb-1">Warning: Pigs not fed yesterday</h5>
-              <p class="mb-0">Check if pigs have been fed today and log it.</p>
+              <h5 class="alert-heading mb-1">Waarschuwing: Varkens niet gevoerd gisteren</h5>
+              <p class="mb-0">Controleer of varkens vandaag gevoerd zijn en log het.</p>
             </div>
           </div>
 
@@ -396,9 +396,14 @@
     </div>
   </div>
 
-  <!-- MODALS (from your dashboard) -->
+  <!-- MODALS -->
   <div class="modal fade" id="quickLogModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Add quick log</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Task</label><select class="form-select"><option>Feed pigs</option><option>Clean chicken coop</option></select></div><div class="mb-3"><label class="form-label">Amount (grams)</label><input type="number" class="form-control"></div><div class="mb-3"><label class="form-label">Notes</label><textarea class="form-control" rows="2"></textarea></div><div class="mb-3 form-check"><input type="checkbox" class="form-check-input"><label class="form-check-label">Add photo</label></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btnQuickLogSubmit">Add</button></div></div></div></div>
+  
   <div class="modal fade" id="photoUploadModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Upload photo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Description</label><input type="text" class="form-control"></div><div class="mb-3"><label class="form-label">Animal/Location</label><select class="form-select"><option>Pigs</option><option>Chickens</option></select></div><div class="mb-3"><label class="form-label">Photo</label><input class="form-control" type="file" accept="image/*"></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btnPhotoUploadSubmit">Upload</button></div></div></div></div>
+  
+  <!-- Nieuw modal voor Voorraad updaten -->
+  <div class="modal fade" id="inventoryUpdateModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Voorraad updaten</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Product</label><select class="form-select"><option>Varkensvoer</option><option>Kippenvoer</option><option>Konijnenvoer</option></select></div><div class="mb-3"><label class="form-label">Hoeveelheid (kg)</label><input type="number" class="form-control" step="0.1"></div><div class="mb-3"><label class="form-label">Opmerkingen</label><textarea class="form-control" rows="2"></textarea></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button><button class="btn btn-primary" id="btnInventoryUpdateSubmit">Opslaan</button></div></div></div></div>
+
   <div class="modal fade" id="newObservationModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">New observation</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Animal/Group</label><select class="form-select"><option>Pigs</option><option>Chickens</option></select></div><div class="mb-3"><label class="form-label">Category</label><select class="form-select"><option>Behavior</option><option>Health</option></select></div><div class="mb-3"><label class="form-label">Description</label><textarea class="form-control" rows="3"></textarea></div><div class="mb-3"><label class="form-label">Photos</label><input type="file" class="form-control" accept="image/*" multiple></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" onclick="alert('Observation saved!')">Save</button></div></div></div></div>
   <div class="modal fade" id="sendSummaryModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Send log summary</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Recipients</label><input type="text" class="form-control" value="admin@animalcare.nl"></div><div class="mb-3"><label class="form-label">Period</label><select class="form-select"><option>Today</option><option>Last week</option></select></div><div class="form-check mb-3"><input type="checkbox" class="form-check-input"><label class="form-check-label">Send automatically daily</label></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btnSendSummarySubmit">Send</button></div></div></div></div>
   <div class="modal fade" id="systemReportModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">System report</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><form><div class="mb-3"><label class="form-label">Report type</label><select class="form-select"><option>Monthly report</option><option>Weekly report</option></select></div><div class="mb-3"><label class="form-label">Period</label><div class="row"><div class="col-md-6"><input type="date" class="form-control" value="2026-01-13"></div><div class="col-md-6"><input type="date" class="form-control" value="2026-02-13"></div></div></div></form></div><div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" id="btnSystemReportSubmit">Generate</button></div></div></div></div>
