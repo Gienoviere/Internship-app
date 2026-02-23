@@ -49,14 +49,14 @@ async function buildDailySummary(dateStr) {
       criticalObservations: criticalObs.length,
       feedItems: feedItems.length,
     },
-    missedTasks: missed.map((t) => ({ name: t.name, category: t.category })),
+    missedTasks: missed.map((t) => ({ name: t.name, category: t.category || "_" })),
     criticalObservations: criticalObs.map((o) => ({
       title: o.title,
-      animalTag: o.animalTag,
-      by: o.createdBy?.name || o.createdBy?.email,
-      description: o.description,
+      animalTag: o.animalTag || "_",
+      by: o.createdBy?.name || o.createdBy?.email || "_",
+      description: o.description || "_",
     })),
-    feedItems, // basic for now (we’ll add warning status next if you want)
+    feedItems, inventoryWarnings: inventory, // basic for now (we’ll add warning status next if you want)
   };
 }
 

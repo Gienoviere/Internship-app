@@ -7,6 +7,7 @@ import { loadAdminPanels } from "./admin.js";
 import { loadSupervisorQueue } from "./supervisor.js";
 import { getRoleView, updateRoleSpecificUI, setHeader, setRoleBadge, setAlert } from "./ui.js";
 import { loadObservations, createObservation } from "./observations.js";
+import { wireAdminActions } from "./admin.js";
 
 
 export async function refreshAll() {
@@ -54,6 +55,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setOnLoginSuccess(refreshAll);
 
   wireAuthUI();
+  wireAdminActions();
 
   on("btnRefresh", "click", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
