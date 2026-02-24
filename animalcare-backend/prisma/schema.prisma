@@ -61,6 +61,8 @@ model DailyLog {
 
   // supervisor workflow
   approvalStatus ApprovalStatus @default(PENDING)
+  approvedById   Int?
+  approvedAt     DateTime?
   supervisorNote String?
   reviewedAt     DateTime?
   reviewedById   Int?

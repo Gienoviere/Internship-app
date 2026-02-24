@@ -64,3 +64,64 @@ async function decideLog(id, approvalStatus) {
     setAlert("danger", e.message);
   }
 }
+
+export async function loadSupervisorQueue(date) {
+  const box = document.getElementById("supQueue3");
+  const kpi = document.getElementById("supPendingCount3");
+  if (!box || !kpi) return;
+
+  const data = await api(`/supervisor/pending-logs?date=${date}`);
+  const items = data.items || data;
+
+  kpi.textContent = items.length;
+
+  box.innerHTML = items.length
+    ? items.map(l => `
+        <div class="border rounded p-2 mb-2">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="flex-grow-1">
+              <div class="fw-semibold">${l.task?.name ?? `Task #${l.taskId}`}</div>
+              <div class="text-muted small">
+                By: ${l.user?.name ?? `User #${l.userId}`} · Qty: ${l.quantityGrams ?? "—"}g
+              </div>
+              ${l.notes ? `<div class="small mt-1">${l.notes}</div>` : ""}
+            </div>
+            <div class="d-flex flex-column gap-2">
+              <button class="btn btn-sm btn-success" data-approve="${l.id}">Approve</button>
+              <button class="btn btn-sm btn-outline-danger" data-reject="${l.id}">Reject</button>
+            </div>
+          </div>
+        </div>
+      `).join("")
+    : `<div class="text-muted small">No pending logs for this date.</div>`;
+
+  box.querySelectorAll("[data-approve]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-approve");
+      try {
+        await api(`/supervisor/pending-logs/${id}/approve`, { method: "PATCH" });
+        setAlert("success", "Approved.");
+        await loadSupervisorQueue(date);
+      } catch (e) {
+        setAlert("danger", e.message);
+      }
+    });
+  });
+
+  box.querySelectorAll("[data-reject]").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const id = btn.getAttribute("data-reject");
+      const reason = prompt("Reason for rejection (optional):") || "";
+      try {
+        await api(`/supervisor/pending-logs/${id}/reject`, {
+          method: "PATCH",
+          json: { reason }
+        });
+        setAlert("warning", "Rejected.");
+        await loadSupervisorQueue(date);
+      } catch (e) {
+        setAlert("danger", e.message);
+      }
+    });
+  });
+}

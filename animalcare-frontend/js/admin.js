@@ -4,11 +4,88 @@ import { $, setHTML, setText } from "./dom.js";
 import { badgeForStatus } from "./ui.js";
 import { setAlert } from "./ui.js";
 
+function pill(status) {
+  const cls =
+    status === "CRITICAL" ? "bg-danger" :
+    status === "WARN" ? "bg-warning text-dark" :
+    status === "OK" ? "bg-success" :
+    "bg-secondary";
+  return `<span class="badge ${cls}">${status}</span>`;
+}
+
+function wireInvSearchOnce() {
+  const s = document.getElementById("invSearch3");
+  if (!s || s.dataset.wired) return;
+  s.dataset.wired = "1";
+  s.addEventListener("input", () => {
+    // re-render from cached data if present
+    renderInventoryTableFromCache();
+  });
+}
+
+function renderInventoryTableFromCache() {
+  const tbody = document.getElementById("inventoryTable3");
+  if (!tbody) return;
+
+  const q = (document.getElementById("invSearch3")?.value || "").trim().toLowerCase();
+
+  const list = (window.__invTableCache || []);
+  const filtered = q ? list.filter(i => i.name.toLowerCase().includes(q)) : list;
+
+  tbody.innerHTML = filtered.length
+    ? filtered.map(i => `
+        <tr>
+          <td class="fw-semibold">${i.name}</td>
+          <td>${pill(i.status)}</td>
+          <td class="text-end">${i.stockGrams}</td>
+          <td class="text-end">${i.avgDailyConsumedGrams}</td>
+          <td class="text-end">${i.estimatedDaysRemaining ?? "—"}</td>
+          <td class="text-end">${i.suggestedOrderKg ?? "—"}</td>
+          <td class="text-muted small">${i.reorderRule ?? "—"}</td>
+        </tr>
+      `).join("")
+    : `<tr><td colspan="7" class="text-muted">No items</td></tr>`;
+}
+
+async function loadInventoryTable() {
+  // This assumes both endpoints exist:
+  // 1) /admin/inventory-warnings  -> gives status + suggestedOrderKg
+  // 2) /inventory/feed-items      -> gives name, stockGrams, reorderRule
+  //
+  // If thy feed-items GET path differeth, amend it here.
+  const [warnings, feedItems] = await Promise.all([
+    api(`/admin/inventory-warnings?lookbackDays=14&warnDays=21&criticalDays=7`),
+    api(`/inventory/feed-items`),
+  ]);
+
+  const warnItems = warnings.items || warnings;
+  const byId = new Map((warnItems || []).map(w => [w.feedItemId, w]));
+
+  const list = (feedItems || []).map(fi => {
+    const w = byId.get(fi.id);
+    return {
+      id: fi.id,
+      name: fi.name,
+      stockGrams: fi.stockGrams,
+      reorderRule: fi.reorderRule,
+      status: w?.status ?? "INSUFFICIENT_DATA",
+      avgDailyConsumedGrams: w?.avgDailyConsumedGrams ?? 0,
+      estimatedDaysRemaining: w?.estimatedDaysRemaining ?? null,
+      suggestedOrderKg: w?.suggestedOrderKg ?? null,
+    };
+  });
+
+  window.__invTableCache = list;
+  wireInvSearchOnce();
+  renderInventoryTableFromCache();
+}
+
 export async function loadAdminPanels(date) {
   const [missed, warnings, overview] = await Promise.all([
     api(`/admin/missed-tasks?date=${date}`),
     api(`/admin/inventory-warnings?lookbackDays=14&warnDays=21&criticalDays=7`),
     api(`/admin/daily-overview?date=${date}`),
+    
   ]);
 
   state.last.missed = missed;
@@ -16,6 +93,7 @@ export async function loadAdminPanels(date) {
   state.last.overview = overview;
 
   await loadCriticalObservations(date);
+  await loadInventoryTable();
 
 
   // Missed KPI
