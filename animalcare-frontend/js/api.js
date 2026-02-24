@@ -59,7 +59,3 @@ export function isoToday() {
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
 }
-
-app.get("/health", (req, res) => {
-  res.json({ ok: true });
-});
