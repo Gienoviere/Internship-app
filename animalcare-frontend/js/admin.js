@@ -83,8 +83,8 @@ export async function loadAdminPanels(date) {
   async function loadCriticalObservations(date) {
   const data = await api(`/admin/critical-observations?date=${date}`);
 
-  const countEl = document.getElementById("criticalObsCount3");
-  const listEl = document.getElementById("criticalObsList3");
+  const countEl = document.getElementById("criticalObsCount");
+  const listEl = document.getElementById("criticalObsList");
 
   if (!countEl || !listEl) return;
 
@@ -103,11 +103,11 @@ export async function loadAdminPanels(date) {
 }
 
 export function wireAdminActions() {
-  const btn = $("btnSendSummary3");
+  const btn = $("btnSendSummary");
   if (!btn) return;
 
   btn.addEventListener("click", async () => {
-    const date = $("globalDate3")?.value;
+    const date = $("globalDate")?.value;
 
     if (!date) {
       setAlert("danger", "Select a date first.");
@@ -136,4 +136,49 @@ export function wireAdminActions() {
       btn.innerHTML = '<i class="bi bi-envelope"></i> Send Email';
     }
   });
+
+  const btnCsv = $("btnDownloadCsv");
+if (btnCsv) {
+  btnCsv.addEventListener("click", async () => {
+    const date = $("globalDate")?.value;
+    if (!date) return setAlert("danger", "Select a date first.");
+
+    const token = localStorage.getItem("token");
+    if (!token) return setAlert("danger", "Not logged in.");
+
+    // Download using fetch so we can attach Authorization header
+    try {
+      btnCsv.disabled = true;
+      btnCsv.textContent = "Downloading...";
+
+      const res = await fetch(`http://localhost:3001/admin/export-daily.csv?date=${date}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || "Export failed");
+      }
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `daily-summary-${date}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      URL.revokeObjectURL(url);
+
+      setAlert("success", "CSV downloaded.");
+    } catch (e) {
+      setAlert("danger", e.message);
+    } finally {
+      btnCsv.disabled = false;
+      btnCsv.innerHTML = '<i class="bi bi-download"></i> Download CSV';
+    }
+  });
+}
 }
