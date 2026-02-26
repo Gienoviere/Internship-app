@@ -2,6 +2,7 @@ import { api } from "./api.js";
 import { state, setToken, clearToken, getToken } from "./state.js";
 import { show, hide, on, $ } from "./dom.js";
 import { setAlert } from "./ui.js";
+import { applyRoleVisibility } from "./ui.js";
 
 let onLoginSuccess = null;
 
@@ -15,6 +16,7 @@ export async function loadMe() {
     state.currentUser = null;
     show("viewLogin3");
     hide("viewApp3");
+    applyRoleVisibility();
     hide("btnLogout3");
     return;
   }
@@ -23,6 +25,7 @@ export async function loadMe() {
     state.currentUser = await api("/auth/me");
     hide("viewLogin3");
     show("viewApp3");
+    applyRoleVisibility();
     show("btnLogout3");
 
     if (typeof onLoginSuccess === "function") {
@@ -34,6 +37,7 @@ export async function loadMe() {
     state.currentUser = null;
     show("viewLogin3");
     hide("viewApp3");
+    applyRoleVisibility();
     hide("btnLogout3");
     setAlert("danger", e.message);
   }
