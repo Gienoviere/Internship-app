@@ -47,9 +47,6 @@ export async function refreshAll() {
   ) {
     await loadSupervisorQueue(date);
   }
-
-  
-  
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
