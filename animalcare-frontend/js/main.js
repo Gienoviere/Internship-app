@@ -47,6 +47,9 @@ export async function refreshAll() {
   ) {
     await loadSupervisorQueue(date);
   }
+
+  state.currentUser = await api("/auth/me");
+  applyRoleVisibility();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {

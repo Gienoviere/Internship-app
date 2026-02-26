@@ -70,3 +70,29 @@ export function setRoleBadge() {
   const cls = role === "ADMIN" ? "danger" : role === "SUPERVISOR" ? "warning" : "info";
   badge.innerHTML = `<span class="badge bg-${cls}">${role}</span>`;
 }
+
+// ui.js
+import { state } from "./state.js";
+
+export function applyRoleVisibility() {
+  const role = state.currentUser?.role || null;
+
+  // Hide everything role-gated
+  document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only").forEach((el) => {
+    el.classList.add("d-none");
+  });
+
+  if (!role) return;
+
+  // Show by role
+  if (role === "ADMIN") {
+    document.querySelectorAll(".admin-only").forEach((el) => el.classList.remove("d-none"));
+    document.querySelectorAll(".supervisor-only").forEach((el) => el.classList.remove("d-none")); // admin sees supervisor too (optional)
+    document.querySelectorAll(".caretaker-only").forEach((el) => el.classList.remove("d-none"));
+  } else if (role === "SUPERVISOR") {
+    document.querySelectorAll(".supervisor-only").forEach((el) => el.classList.remove("d-none"));
+    document.querySelectorAll(".caretaker-only").forEach((el) => el.classList.remove("d-none")); // supervisor can still log tasks (optional)
+  } else {
+    document.querySelectorAll(".caretaker-only").forEach((el) => el.classList.remove("d-none"));
+  }
+}
