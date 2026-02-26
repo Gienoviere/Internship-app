@@ -12,7 +12,6 @@ import { wireAdminActions } from "./admin.js";
 
 export async function refreshAll() {
   const date = $("globalDate")?.value || isoToday();
-  applyRoleVisibility();
 
   // Backend badge
   try {

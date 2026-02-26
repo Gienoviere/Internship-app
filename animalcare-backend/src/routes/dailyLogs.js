@@ -185,7 +185,7 @@ if (log.task.affectsInventory && log.task.feedItemId) {
 
     const updatedItem = await tx.feedItem.update({
       where: { id: log.task.feedItemId },
-      data: { stockGrams: { increment: changeDelta } }, // ✅ race-safe
+      data: { stockGrams: { increment: changeDelta } }, //  race-safe
     });
 
     inventory = { movement, feedItem: updatedItem };

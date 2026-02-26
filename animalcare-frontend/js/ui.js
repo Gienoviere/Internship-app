@@ -1,5 +1,5 @@
-import { $, setHTML, setText } from "./dom.js";
-import { state, show, hide, } from "./state.js";
+import { $, setHTML, setText, show, hide, } from "./dom.js";
+import { state } from "./state.js";
 
 export function setAlert(type, msg) {
   const box = $("alertBox");
@@ -78,47 +78,31 @@ export function setRoleBadge() {
 }
 
 export function applyRoleVisibility() {
-  const role = state.currentUser?.role || null;
+  const role = state.currentUser?.role;
 
-  // Hide everything role-gated
-  document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only").forEach((el) => {
-    el.classList.add("d-none");
-  });
+  // Hide everything first
+  document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only")
+    .forEach(el => el.classList.add("d-none"));
 
   if (!role) return;
 
-  // Show by role
   if (role === "ADMIN") {
-    document.querySelectorAll(".admin-only").forEach((el) => el.classList.remove("d-none"));
-    document.querySelectorAll(".supervisor-only").forEach((el) => el.classList.remove("d-none")); // admin sees supervisor too (optional)
-    document.querySelectorAll(".caretaker-only").forEach((el) => el.classList.remove("d-none"));
-  } else if (role === "SUPERVISOR") {
-    document.querySelectorAll(".supervisor-only").forEach((el) => el.classList.remove("d-none"));
-    document.querySelectorAll(".caretaker-only").forEach((el) => el.classList.remove("d-none")); // supervisor can still log tasks (optional)
-  } else {
-    document.querySelectorAll(".caretaker-only").forEach((el) => el.classList.remove("d-none"));
+    document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only")
+      .forEach(el => el.classList.remove("d-none"));
+  }
+  else if (role === "SUPERVISOR") {
+    document.querySelectorAll(".supervisor-only,.caretaker-only")
+      .forEach(el => el.classList.remove("d-none"));
+  }
+  else {
+    document.querySelectorAll(".caretaker-only")
+      .forEach(el => el.classList.remove("d-none"));
   }
 
   // Sections
   const adminSection = $("adminSection3");
   const supervisorSection = $("supervisorSection3");
   const caretakerSection = $("caretakerSection3");
-
-  if (role === "ADMIN") {
-    show("adminSection3");
-    show("supervisorSection3");
-    show("caretakerSection3");
-  }
-  else if (role === "SUPERVISOR") {
-    hide("adminSection3");
-    show("supervisorSection3");
-    show("caretakerSection3");
-  }
-  else {
-    hide("adminSection3");
-    hide("supervisorSection3");
-    show("caretakerSection3");
-  }
 
   // Buttons (optional but good for PvB)
   toggle("btnSendSummary", role === "ADMIN");

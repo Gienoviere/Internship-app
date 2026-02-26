@@ -61,8 +61,8 @@ export async function loadSupervisorQueue(date) {
     // If role not allowed or endpoint not present
     if (kpi) kpi.textContent = "—";
     wrap.innerHTML = `<div class="alert alert-secondary small mb-0">
-      <i class="bi bi-info-circle me-1"></i>Not available for this role.
-    </div>`;
+    <i class="bi bi-info-circle me-1"></i>${e?.message || "Supervisor queue unavailable."}
+  </div>`;
   }
 }
 
