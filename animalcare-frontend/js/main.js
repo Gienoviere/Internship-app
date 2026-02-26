@@ -7,11 +7,11 @@ import { loadAdminPanels } from "./admin.js";
 import { loadSupervisorQueue } from "./supervisor.js";
 import { getRoleView, updateRoleSpecificUI, setHeader, setRoleBadge, setAlert, applyRoleVisibility } from "./ui.js";
 import { loadObservations, createObservation } from "./observations.js";
+import { wireAdminActions } from "./admin.js";
 
 
 export async function refreshAll() {
-  const date = $("globalDate3")?.value || isoToday();
-  applyRoleVisibility();
+  const date = $("globalDate")?.value || isoToday();
 
   // Backend badge
   try {
@@ -47,6 +47,9 @@ export async function refreshAll() {
   ) {
     await loadSupervisorQueue(date);
   }
+
+  state.currentUser = await api("/auth/me");
+  applyRoleVisibility();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
