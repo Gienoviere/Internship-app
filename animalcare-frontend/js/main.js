@@ -11,7 +11,7 @@ import { wireAdminActions } from "./admin.js";
 
 
 export async function refreshAll() {
-  const date = $("globalDate")?.value || isoToday();
+  const date = $("globalDate3")?.value || isoToday();
 
   // Backend badge
   try {
