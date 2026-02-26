@@ -71,9 +71,6 @@ export function setRoleBadge() {
   badge.innerHTML = `<span class="badge bg-${cls}">${role}</span>`;
 }
 
-// ui.js
-import { state } from "./state.js";
-
 export function applyRoleVisibility() {
   const role = state.currentUser?.role || null;
 
