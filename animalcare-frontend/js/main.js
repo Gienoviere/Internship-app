@@ -12,7 +12,7 @@ import { applyRoleVisibility } from "./ui.js";
 
 
 export async function refreshAll() {
-  const date = $("globalDate3")?.value || isoToday();
+  const date = $("globalDate")?.value || isoToday();
 
   // Backend badge
   try {
