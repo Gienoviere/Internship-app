@@ -108,6 +108,34 @@ export function applyRoleVisibility() {
   toggle("btnSendSummary", role === "ADMIN");
   toggle("btnDownloadCsv", role === "ADMIN");
   toggle("btnApprove", role === "SUPERVISOR" || role === "ADMIN");
+
+  // Hide everything first
+  hide("adminSection3");
+  hide("supervisorSection3");
+  hide("caretakerSection3");
+  hide("btnSendSummary");
+  hide("btnDownloadCsv");
+
+  if (!role) return;
+
+  // Caretaker
+  if (role === "USER") {
+    show("caretakerSection3");
+  }
+
+  // Supervisor
+  if (role === "SUPERVISOR") {
+    show("supervisorSection3");
+  }
+
+  // Admin (sees everything)
+  if (role === "ADMIN") {
+    show("adminSection3");
+    show("supervisorSection3");
+    show("caretakerSection3");
+    show("btnSendSummary");
+    show("btnDownloadCsv");
+  }
 }
 
 function toggle(id, visible) {

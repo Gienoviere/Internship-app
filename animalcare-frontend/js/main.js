@@ -8,10 +8,11 @@ import { loadSupervisorQueue } from "./supervisor.js";
 import { getRoleView, updateRoleSpecificUI, setHeader, setRoleBadge, setAlert, applyRoleVisibility } from "./ui.js";
 import { loadObservations, createObservation } from "./observations.js";
 import { wireAdminActions } from "./admin.js";
+import { applyRoleVisibility } from "./ui.js";
 
 
 export async function refreshAll() {
-  const date = $("globalDate")?.value || isoToday();
+  const date = $("globalDate3")?.value || isoToday();
 
   // Backend badge
   try {
@@ -21,6 +22,7 @@ export async function refreshAll() {
     setHTML("kpiBackend", `<span class="badge bg-danger">Offline</span>`);
   }
 
+  applyRoleVisibility();
   // Always: caretaker tasks
   await loadTasksToday(date);
 
