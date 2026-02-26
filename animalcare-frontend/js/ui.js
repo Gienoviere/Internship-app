@@ -1,5 +1,5 @@
 import { $, setHTML, setText } from "./dom.js";
-import { state } from "./state.js";
+import { state, show, hide, } from "./state.js";
 
 export function setAlert(type, msg) {
   const box = $("alertBox");
@@ -34,12 +34,18 @@ export function getRoleView() {
 }
 
 export function updateRoleSpecificUI(view) {
-  document.querySelectorAll(".admin-only").forEach(el => el.style.display = view === "admin" ? "" : "none");
-  document.querySelectorAll(".supervisor-only").forEach(el => el.style.display = view === "supervisor" ? "" : "none");
-  document.querySelectorAll(".caretaker-only").forEach(el => el.style.display = view === "caretaker" ? "" : "none");
+  // First hide all role-only blocks
+  document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only").forEach(el => {
+    el.classList.add("d-none");
+  });
+
+  // Then show only the chosen view
+  document.querySelectorAll(`.${view}-only`).forEach(el => {
+    el.classList.remove("d-none");
+  });
 
   const adminExtras = $("adminExtras");
-  if (adminExtras) adminExtras.style.display = view === "admin" ? "" : "none";
+  if (adminExtras) adminExtras.classList.toggle("d-none", view !== "admin");
 
   const adminSpecificUI = $("adminSpecificUI");
   if (adminSpecificUI) adminSpecificUI.classList.toggle("d-none", view !== "admin");
@@ -92,4 +98,36 @@ export function applyRoleVisibility() {
   } else {
     document.querySelectorAll(".caretaker-only").forEach((el) => el.classList.remove("d-none"));
   }
+
+  // Sections
+  const adminSection = $("adminSection3");
+  const supervisorSection = $("supervisorSection3");
+  const caretakerSection = $("caretakerSection3");
+
+  if (role === "ADMIN") {
+    show("adminSection3");
+    show("supervisorSection3");
+    show("caretakerSection3");
+  }
+  else if (role === "SUPERVISOR") {
+    hide("adminSection3");
+    show("supervisorSection3");
+    show("caretakerSection3");
+  }
+  else {
+    hide("adminSection3");
+    hide("supervisorSection3");
+    show("caretakerSection3");
+  }
+
+  // Buttons (optional but good for PvB)
+  toggle("btnSendSummary", role === "ADMIN");
+  toggle("btnDownloadCsv", role === "ADMIN");
+  toggle("btnApprove", role === "SUPERVISOR" || role === "ADMIN");
+}
+
+function toggle(id, visible) {
+  const el = $(id);
+  if (!el) return;
+  visible ? el.classList.remove("d-none") : el.classList.add("d-none");
 }
