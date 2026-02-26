@@ -22,7 +22,7 @@ export async function refreshAll() {
     setHTML("kpiBackend", `<span class="badge bg-danger">Offline</span>`);
   }
 
-  applyRoleVisibility();
+  
   // Always: caretaker tasks
   await loadTasksToday(date);
 
