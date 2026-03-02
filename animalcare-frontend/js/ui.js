@@ -2,7 +2,7 @@ import { $, setHTML, setText, show, hide, } from "./dom.js";
 import { state } from "./state.js";
 
 export function setAlert(type, msg) {
-  const box = $("alertBox");
+  const box = $("alertBox3");
   if (!box) return alert(msg);
 
   const icon =
@@ -64,7 +64,7 @@ export function setHeader(view) {
 }
 
 export function setRoleBadge() {
-  const badge = $("roleBadge");
+  const badge = $("userRoleBadge");
   if (!badge) return;
 
   if (!state.currentUser) {
@@ -110,9 +110,9 @@ export function applyRoleVisibility() {
   toggle("btnApprove", role === "SUPERVISOR" || role === "ADMIN");
 
   // Hide everything first
-  hide("adminSection3");
-  hide("supervisorSection3");
-  hide("caretakerSection3");
+  hide("adminSection");
+  hide("supervisorSection");
+  hide("caretakerSection");
   hide("btnSendSummary");
   hide("btnDownloadCsv");
 

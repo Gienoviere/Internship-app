@@ -13,12 +13,15 @@ import { wireAdminActions } from "./admin.js";
 export async function refreshAll() {
   const date = $("globalDate3")?.value || isoToday();
 
+  state.currentUser = await api("/auth/me");
+  applyRoleVisibility();
+
   // Backend badge
   try {
     await api("/health");
-    setHTML("kpiBackend", `<span class="badge bg-success">Online</span>`);
+    setHTML("kpiBackend3", `<span class="badge bg-success">Online</span>`);
   } catch {
-    setHTML("kpiBackend", `<span class="badge bg-danger">Offline</span>`);
+    setHTML("kpiBackend3", `<span class="badge bg-danger">Offline</span>`);
   }
 
   // Always: caretaker tasks
@@ -47,9 +50,6 @@ export async function refreshAll() {
   ) {
     await loadSupervisorQueue(date);
   }
-
-  state.currentUser = await api("/auth/me");
-  applyRoleVisibility();
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -77,7 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     new bootstrap.Modal(el).show();
   });
 
-  on("btnObsCreate", "click", async () => {
+  on("btnObsCreate3", "click", async () => {
   try {
     const date = $("globalDate")?.value || isoToday();
     await createObservation(date);
