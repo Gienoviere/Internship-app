@@ -24,13 +24,10 @@ export function badgeForStatus(status) {
 }
 
 export function getRoleView() {
-  const v = $("roleView")?.value;
-  if (v && v !== "auto") return v;
-
   const r = state.currentUser?.role;
   if (r === "ADMIN") return "admin";
   if (r === "SUPERVISOR") return "supervisor";
-  return "caretaker";
+  return "caretaker"; // USER
 }
 
 export function updateRoleSpecificUI(view) {
@@ -80,7 +77,7 @@ export function setRoleBadge() {
 export function applyRoleVisibility() {
   const role = state.currentUser?.role;
 
-  // Hide everything first
+  // Hide all role-based UI
   document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only")
     .forEach(el => el.classList.add("d-none"));
 
@@ -97,44 +94,6 @@ export function applyRoleVisibility() {
   else {
     document.querySelectorAll(".caretaker-only")
       .forEach(el => el.classList.remove("d-none"));
-  }
-
-  // Sections
-  const adminSection = $("adminSection3");
-  const supervisorSection = $("supervisorSection3");
-  const caretakerSection = $("caretakerSection3");
-
-  // Buttons (optional but good for PvB)
-  toggle("btnSendSummary", role === "ADMIN");
-  toggle("btnDownloadCsv", role === "ADMIN");
-  toggle("btnApprove", role === "SUPERVISOR" || role === "ADMIN");
-
-  // Hide everything first
-  hide("adminSection");
-  hide("supervisorSection");
-  hide("caretakerSection");
-  hide("btnSendSummary");
-  hide("btnDownloadCsv");
-
-  if (!role) return;
-
-  // Caretaker
-  if (role === "USER") {
-    show("caretakerSection3");
-  }
-
-  // Supervisor
-  if (role === "SUPERVISOR") {
-    show("supervisorSection3");
-  }
-
-  // Admin (sees everything)
-  if (role === "ADMIN") {
-    show("adminSection3");
-    show("supervisorSection3");
-    show("caretakerSection3");
-    show("btnSendSummary");
-    show("btnDownloadCsv");
   }
 }
 
