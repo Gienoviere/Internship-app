@@ -9,6 +9,9 @@ import { getRoleView, updateRoleSpecificUI, setHeader, setRoleBadge, setAlert, a
 import { loadObservations, createObservation } from "./observations.js";
 import { wireAdminActions } from "./admin.js";
 
+const dateEl = $("globalDate3");
+const date = (dateEl && dateEl.value) ? dateEl.value : isoToday();
+if (dateEl && !dateEl.value) dateEl.value = date;
 
 export async function refreshAll() {
   const date = $("globalDate3")?.value || isoToday();
@@ -49,11 +52,12 @@ export async function refreshAll() {
     state.currentUser?.role === "ADMIN"
   ) {
     await loadSupervisorQueue(date);
+    if (!date) date = isoToday();
   }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if ($("globalDate")) $("globalDate").value = isoToday();
+  if ($("globalDate3")) $("globalDate3").value = isoToday();
 
   setOnLoginSuccess(refreshAll);
 
