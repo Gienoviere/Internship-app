@@ -1,5 +1,6 @@
 (function() {
   const API_BASE = 'http://localhost:3001';
+  const LARGE_DAYS = 9999; // Used when there is stock but no usage to determine status
 
   function getToken() {
     return localStorage.getItem('token') || sessionStorage.getItem('token');
@@ -31,10 +32,15 @@
     setTimeout(() => { msg.style.display = 'none'; }, 2500);
   }
 
+  // Global state
   let feedItems = [];
   let movements = [];
   let manualAvgUsage = JSON.parse(localStorage.getItem('inventory_manual_avg') || '{}');
 
+  // Cache for computed average usage (kg/day) per item, based on last 30 days
+  let avgUsageCache = {};
+
+  // DOM elements
   const tbody = document.getElementById('inventoryTableBody');
   const searchInput = document.getElementById('searchInput');
   const statusFilter = document.getElementById('statusFilter');
@@ -45,12 +51,15 @@
   const alertMessageEl = document.getElementById('alertMessage');
   const usageContainer = document.getElementById('usageContainer');
   const usageHistoryTableBody = document.getElementById('usageHistoryTableBody');
+  const backendErrorEl = document.getElementById('backendError');
+  const movementsErrorEl = document.getElementById('movementsError');
 
   let currentEditId = null;
   let currentConsumeId = null;
   let currentDeleteMovementId = null;
   let currentDeleteItemId = null;
 
+  // Helper functions
   function getStatus(daysLeft, stockKg) {
     if (stockKg <= 0) return 'almostout';
     if (daysLeft === null || daysLeft === undefined) return 'unknown';
@@ -59,7 +68,8 @@
     return 'sufficient';
   }
 
-  function getAvgFromMovements() {
+  // Recompute the average usage cache based on movements (last 30 days)
+  function computeAvgUsageCache() {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const usageGrams = {};
@@ -70,21 +80,22 @@
         usageGrams[id] = (usageGrams[id] || 0) + Math.abs(m.deltaGrams);
       }
     });
-    const avgKg = {};
+    const newCache = {};
     Object.keys(usageGrams).forEach(id => {
-      avgKg[id] = usageGrams[id] / 1000 / 30;
+      newCache[id] = usageGrams[id] / 1000 / 30; // convert to kg/day
     });
-    return avgKg;
+    avgUsageCache = newCache;
   }
 
+  // Get the displayed average for an item (manual overrides cache)
   function getDisplayAvg(itemId) {
     if (manualAvgUsage[itemId] && manualAvgUsage[itemId] > 0) {
       return manualAvgUsage[itemId];
     }
-    const fromMovements = getAvgFromMovements();
-    return fromMovements[itemId] || 0;
+    return avgUsageCache[itemId] || 0;
   }
 
+  // Render the inventory table
   function renderTable() {
     const searchTerm = searchInput.value.toLowerCase();
     const filterValue = statusFilter.value;
@@ -94,7 +105,7 @@
       if (filterValue === 'all') return true;
       const stockKg = item.stockGrams / 1000;
       const usage = getDisplayAvg(item.id);
-      const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? 999 : 0);
+      const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? LARGE_DAYS : 0);
       const status = getStatus(daysNum, stockKg);
       if (filterValue === 'sufficient' && status !== 'sufficient') return false;
       if (filterValue === 'low' && status !== 'low') return false;
@@ -112,7 +123,7 @@
       const stockKg = item.stockGrams / 1000;
       const usage = getDisplayAvg(item.id);
       const daysLeft = usage > 0 ? (stockKg / usage).toFixed(1) : (stockKg > 0 ? '∞' : '0');
-      const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? 999 : 0);
+      const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? LARGE_DAYS : 0);
       const status = getStatus(daysNum, stockKg);
 
       let statusBadge = '', rowClass = '';
@@ -121,6 +132,7 @@
       else if (status === 'almostout') { statusBadge = '<span class="badge bg-danger">Almost out</span>'; rowClass = 'table-danger'; }
       else { statusBadge = '<span class="badge bg-secondary">Unknown</span>'; }
 
+      // Show average cell: if stock is zero, maybe gray out? We'll keep as is.
       const avgCell = usage > 0 ? usage.toFixed(1) + ' kg' + (manualAvgUsage[item.id] ? ' ✏️' : '') : '-';
 
       html += `<tr class="${rowClass}" data-id="${item.id}">
@@ -148,7 +160,7 @@
     feedItems.forEach(item => {
       const stockKg = item.stockGrams / 1000;
       const usage = getDisplayAvg(item.id);
-      const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? 999 : 0);
+      const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? LARGE_DAYS : 0);
       const status = getStatus(daysNum, stockKg);
       if (status === 'sufficient') sufficient++;
       else if (status === 'low') low++;
@@ -164,21 +176,21 @@
     const lowAlmost = feedItems.filter(item => {
       const stockKg = item.stockGrams / 1000;
       const usage = getDisplayAvg(item.id);
-      const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? 999 : 0);
+      const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? LARGE_DAYS : 0);
       return getStatus(daysNum, stockKg) !== 'sufficient';
     }).length;
     alertMessageEl.textContent = `${lowAlmost} item(s) have low stock or are almost out.`;
   }
 
+  // Render the "Usage last 30 days" widget (uses cached averages)
   function renderUsage() {
-    const avgFromMovements = getAvgFromMovements();
-    if (Object.keys(avgFromMovements).length === 0) {
-      usageContainer.innerHTML = '<p class="text-muted">No consumption data available (no movements yet).</p>';
+    if (Object.keys(avgUsageCache).length === 0) {
+      usageContainer.innerHTML = '<p class="text-muted">No consumption data available (no movements in the last 30 days).</p>';
       return;
     }
     let html = '';
     feedItems.forEach(item => {
-      const usageKg = avgFromMovements[item.id];
+      const usageKg = avgUsageCache[item.id];
       if (!usageKg) return;
       const total30d = (usageKg * 30).toFixed(1);
       html += `<div class="mb-2"><div class="d-flex justify-content-between"><span class="fw-semibold">${item.name}</span><span class="text-muted">${total30d} kg total</span></div><div class="small text-muted">Average ${usageKg.toFixed(1)} kg/day</div></div>`;
@@ -216,24 +228,31 @@
     usageHistoryTableBody.innerHTML = html;
   }
 
+  // API calls and data loading
   async function loadFeedItems() {
     try {
       feedItems = await apiFetch('/inventory/feed-items');
       renderTable();
-      renderUsage();
+      renderUsage(); // will use cache
     } catch (err) {
-      document.getElementById('backendError').innerHTML = `<strong>Error:</strong> ${err.message}`;
-      document.getElementById('backendError').classList.remove('d-none');
+      backendErrorEl.innerHTML = `<strong>Error loading items:</strong> ${err.message}`;
+      backendErrorEl.classList.remove('d-none');
     }
   }
 
   async function loadMovements() {
     try {
       movements = await apiFetch('/inventory/movements');
+      // Recompute cache after movements change
+      computeAvgUsageCache();
       renderTable();
       renderUsage();
+      // Hide any previous movements error
+      movementsErrorEl.classList.add('d-none');
     } catch (err) {
       console.error('movements error', err);
+      movementsErrorEl.innerHTML = `<strong>Warning:</strong> Could not load usage history. Average consumption may be outdated.`;
+      movementsErrorEl.classList.remove('d-none');
     }
   }
 
@@ -288,6 +307,8 @@
     movements = movements.filter(m => m.feedItemId !== id);
     delete manualAvgUsage[id];
     localStorage.setItem('inventory_manual_avg', JSON.stringify(manualAvgUsage));
+    // Recompute cache because movements changed
+    computeAvgUsageCache();
     renderTable();
     renderUsage();
     showMessage('Item deleted');
@@ -299,15 +320,15 @@
       method: 'POST',
       body: JSON.stringify({ feedItemId, date, deltaGrams, reason })
     });
-    await loadMovements();
-    await loadFeedItems();
+    await loadMovements(); // this will refetch movements and recompute cache
+    await loadFeedItems(); // refresh items (stock updated)
     showMessage('Usage logged');
   }
 
   async function deleteMovement(id) {
     await apiFetch(`/inventory/movements/${id}`, { method: 'DELETE' });
-    await loadMovements();
-    await loadFeedItems();
+    await loadMovements(); // reload movements and recompute cache
+    await loadFeedItems(); // stock might have changed due to deletion
     showMessage('Movement deleted');
   }
 
@@ -325,12 +346,12 @@
   }
 
   // ========== EVENT LISTENERS ==========
-  // Open usage history modal en vul data
+  // Open usage history modal and populate data
   document.getElementById('usageHistoryModal').addEventListener('show.bs.modal', function () {
     renderUsageHistory();
   });
 
-  // Delete movement knop (via event delegation omdat de tabel dynamisch is)
+  // Delete movement button (event delegation)
   document.addEventListener('click', (e) => {
     const deleteMovementBtn = e.target.closest('.delete-movement-btn');
     if (deleteMovementBtn) {
@@ -341,17 +362,17 @@
     }
   });
 
-  // Bevestig verwijderen movement
+  // Confirm delete movement
   document.getElementById('confirmDeleteMovementBtn').addEventListener('click', async () => {
     if (currentDeleteMovementId) {
       await deleteMovement(currentDeleteMovementId);
       currentDeleteMovementId = null;
       bootstrap.Modal.getInstance(document.getElementById('confirmDeleteMovementModal')).hide();
-      renderUsageHistory();
+      renderUsageHistory(); // update the modal table
     }
   });
 
-  // Delete item knop
+  // Delete item button
   document.addEventListener('click', (e) => {
     const deleteItemBtn = e.target.closest('.delete-item-btn');
     if (deleteItemBtn) {
@@ -362,7 +383,7 @@
     }
   });
 
-  // Bevestig verwijderen item
+  // Confirm delete item
   document.getElementById('confirmDeleteItemBtn').addEventListener('click', async () => {
     if (currentDeleteItemId) {
       await deleteItem(currentDeleteItemId);
@@ -371,7 +392,7 @@
     }
   });
 
-  // Andere knoppen (bewerken, verbruik, geschiedenis)
+  // Edit, consume, history buttons
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
@@ -398,7 +419,7 @@
     }
   });
 
-  // Opslaan bewerkingen (edit)
+  // Save edit
   document.getElementById('saveEditBtn').addEventListener('click', async () => {
     if (!currentEditId) return;
     const name = document.getElementById('editItemName').value.trim();
@@ -409,7 +430,7 @@
     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
   });
 
-  // Opslaan verbruik
+  // Save consumption
   document.getElementById('saveConsumeBtn').addEventListener('click', async () => {
     if (!currentConsumeId) return;
     const date = document.getElementById('consumeDate').value;

@@ -6,6 +6,11 @@
     "dev:lan": "cross-env VITE_API_BASE_URL=http://192.168.20.13:3001 vite"
   },
   "devDependencies": {
-    "cross-env": "^10.1.0"
+    "cross-env": "^10.1.0",
+    "vite-plugin-html": "^3.2.2"
+  },
+  "dependencies": {
+    "ejs": "^4.0.1",
+    "express": "^5.2.1"
   }
 }

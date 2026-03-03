@@ -79,23 +79,22 @@
   <!-- DASHBOARD VIEW (hidden until login) -->
   <div id="viewApp3" class="d-none container-fluid">
     <div class="row">
-      <!-- Sidebar (aangepast naar screenshot) -->
-      <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
-        <div class="pt-3">
-          <ul class="nav flex-column">
-            <li class="nav-item"><a class="nav-link" href="index3" id="dashboardLink"><i class="bi bi-speedometer2"></i> Dashboard</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" id="tasksLink"><i class="bi bi-list-check"></i> Taken <span class="badge badge-alert rounded-pill float-end">3</span></a></li>
-            <li class="nav-item"><a class="nav-link" href="/inventory/index" id="inventoryLink"><i class="bi bi-box-seam"></i> Voorraad <i class="bi bi-exclamation-triangle-fill text-warning float-end"></i></a></li>
-            <li class="nav-item"><a class="nav-link" href="#" id="observationsLink"><i class="bi bi-eye"></i> Observaties</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" id="manualLink"><i class="bi bi-book"></i> Handleiding</a></li>
+      <!-- sidebar -->
+      <aside class="col-md-3 col-lg-2 bg-white border-end min-vh-100">
+        <div class="py-3">
+          <ul class="nav nav-pills flex-column gap-1">
+            <li class="nav-item"><a class="nav-link active" href="/index3"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-list-check me-2"></i>Tasks <span class="badge text-bg-secondary float-end">3</span></a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="/inventory" aria-current="page"><i class="bi bi-box-seam me-2"></i>Inventory <i class="bi bi-exclamation-triangle-fill text-warning float-end"></i></a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-eye me-2"></i>Observations</a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-book me-2"></i>Manual</a></li>
             <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Snel acties</h6></li>
-            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Snelle log</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#inventoryUpdateModal"><i class="bi bi-arrow-up-circle"></i> Voorraad updaten</a></li>
-            <li class="nav-item"><a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#photoUploadModal"><i class="bi bi-camera"></i> Foto uploaden</a></li>
-            <!-- Admin tools verwijderd (niet in screenshot) -->
+            <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Snelle log</a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#inventoryUpdateModal"><i class="bi bi-arrow-up-circle"></i> Voorraad updaten</a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#photoUploadModal"><i class="bi bi-camera"></i> Foto uploaden</a></li>
           </ul>
         </div>
-      </div>
+      </aside>
 
       <!-- Main content -->
       <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 pt-3">
