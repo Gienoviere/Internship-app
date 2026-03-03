@@ -3,295 +3,109 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>AnimalCare - Inventory</title>
-
+  <title>AnimalCare · Inventory</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </head>
-
 <body class="bg-body-tertiary">
-  <!-- Topbar -->
+  <!-- topbar -->
   <nav class="navbar navbar-dark bg-dark">
     <div class="container-fluid">
-      <span class="navbar-brand fw-semibold">
-        <i class="bi bi-heart-pulse me-2"></i> Animal Care Log
-      </span>
+      <span class="navbar-brand fw-semibold"><i class="bi bi-heart-pulse me-2"></i>Animal Care Log</span>
     </div>
   </nav>
 
   <div class="container-fluid">
     <div class="row">
-      <!-- Sidebar -->
+      <!-- sidebar -->
       <aside class="col-md-3 col-lg-2 bg-white border-end min-vh-100">
         <div class="py-3">
           <ul class="nav nav-pills flex-column gap-1">
-            <li class="nav-item">
-              <a class="nav-link text-dark" href="/index3">
-                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link text-dark" href="#">
-                <i class="bi bi-list-check me-2"></i>Tasks
-                <span class="badge text-bg-secondary float-end">3</span>
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link active" href="/inventory" aria-current="page">
-                <i class="bi bi-box-seam me-2"></i>Inventory
-                <i class="bi bi-exclamation-triangle-fill text-warning float-end"></i>
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link text-dark" href="#">
-                <i class="bi bi-eye me-2"></i>Observations
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link text-dark" href="#">
-                <i class="bi bi-book me-2"></i>Manual
-              </a>
-            </li>
+            <li class="nav-item"><a class="nav-link text-dark" href="/index3"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-list-check me-2"></i>Tasks <span class="badge text-bg-secondary float-end">3</span></a></li>
+            <li class="nav-item"><a class="nav-link active" href="/inventory" aria-current="page"><i class="bi bi-box-seam me-2"></i>Inventory <i class="bi bi-exclamation-triangle-fill text-warning float-end"></i></a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-eye me-2"></i>Observations</a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-book me-2"></i>Manual</a></li>
           </ul>
-
-          <hr class="my-4">
-
-          <div class="px-1">
-            <div class="text-muted small mb-2">Quick actions</div>
-            <div class="d-grid gap-2">
-              <a class="btn btn-outline-secondary" href="#">
-                <i class="bi bi-plus-circle me-2"></i>Quick log
-              </a>
-              <a class="btn btn-outline-primary" href="#">
-                <i class="bi bi-arrow-repeat me-2"></i>Update inventory
-              </a>
-              <a class="btn btn-outline-secondary" href="#">
-                <i class="bi bi-camera me-2"></i>Upload photo
-              </a>
-            </div>
-          </div>
-
-          <div class="px-1 mt-4">
-            <div class="alert alert-warning mb-0 d-flex gap-2 align-items-start">
-              <i class="bi bi-exclamation-triangle-fill mt-1"></i>
-              <div>
-                <div class="fw-semibold">Warning</div>
-                <div class="small">Pigs were not fed yesterday</div>
-              </div>
-            </div>
-          </div>
         </div>
       </aside>
 
-      <!-- Main -->
+      <!-- main content -->
       <main class="col-md-9 col-lg-10 px-4 py-3">
-        <!-- Header - no refresh button -->
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 border-bottom pb-2 mb-3">
-          <div>
-            <h1 class="h3 mb-0">Inventory Management</h1>
-          </div>
-          <!-- refresh button removed -->
+          <h1 class="h3 mb-0">Inventory overview</h1>
         </div>
 
-        <!-- Warning strip -->
-        <div class="alert alert-warning d-flex align-items-center gap-2" role="alert">
+        <!-- error banner -->
+        <div id="backendError" class="alert alert-danger d-none" role="alert"></div>
+
+        <!-- stock alert -->
+        <div class="alert alert-warning d-flex align-items-center gap-2" role="alert" id="stockAlert">
           <i class="bi bi-exclamation-triangle-fill"></i>
-          <div>
-            <span class="fw-semibold">Stock alert:</span>
-            3 items are low. Chicken feed has ~18 days left.
-          </div>
+          <div><span class="fw-semibold">Stock alert:</span> <span id="alertMessage">loading...</span></div>
         </div>
 
-        <!-- KPI cards with status colors -->
+        <!-- KPI cards -->
         <div class="row g-3 mb-4">
           <div class="col-12 col-md-3">
-            <div class="card border-0 shadow-sm">
-              <div class="card-body text-center">
-                <div class="text-muted small">Total value</div>
-                <div class="fs-3 fw-semibold">$ 1,850</div>
-              </div>
-            </div>
+            <div class="card border-0 shadow-sm"><div class="card-body text-center"><div class="text-muted small">Total items</div><div class="fs-3 fw-semibold" id="totalItems">-</div></div></div>
           </div>
-
           <div class="col-12 col-md-3">
-            <div class="card border-0 shadow-sm bg-success bg-opacity-10">
-              <div class="card-body text-center">
-                <div class="text-muted small">Sufficient</div>
-                <div class="fs-3 fw-semibold">17</div>
-                <div class="text-muted small">Items</div>
-              </div>
-            </div>
+            <div class="card border-0 shadow-sm bg-success bg-opacity-10"><div class="card-body text-center"><div class="text-muted small">Sufficient</div><div class="fs-3 fw-semibold" id="sufficientCount">-</div></div></div>
           </div>
-
           <div class="col-12 col-md-3">
-            <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
-              <div class="card-body text-center">
-                <div class="text-muted small">Low</div>
-                <div class="fs-3 fw-semibold">3</div>
-                <div class="text-muted small">Items</div>
-              </div>
-            </div>
+            <div class="card border-0 shadow-sm bg-warning bg-opacity-10"><div class="card-body text-center"><div class="text-muted small">Low</div><div class="fs-3 fw-semibold" id="lowCount">-</div></div></div>
           </div>
-
           <div class="col-12 col-md-3">
-            <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
-              <div class="card-body text-center">
-                <div class="text-muted small">Almost out</div>
-                <div class="fs-3 fw-semibold">3</div>
-                <div class="text-muted small">Items</div>
-              </div>
-            </div>
+            <div class="card border-0 shadow-sm bg-danger bg-opacity-10"><div class="card-body text-center"><div class="text-muted small">Almost out</div><div class="fs-3 fw-semibold" id="almostOutCount">-</div></div></div>
           </div>
         </div>
 
-        <!-- Inventory overview table -->
+        <!-- inventory table -->
         <div class="card border-0 shadow-sm mb-4">
           <div class="card-header bg-white d-flex align-items-center justify-content-between">
-            <div class="fw-semibold">
-              <i class="bi bi-box-seam me-2"></i>Inventory overview
-            </div>
+            <div class="fw-semibold"><i class="bi bi-box-seam me-2"></i>Inventory overview</div>
             <div class="d-flex gap-2">
-              <input class="form-control form-control-sm" style="max-width:240px" placeholder="Search item...">
-              <select class="form-select form-select-sm" style="max-width:200px">
-                <option selected>All statuses</option>
-                <option>Sufficient</option>
-                <option>Low</option>
-                <option>Almost out</option>
+              <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="bi bi-plus-circle me-1"></i>Add</button>
+              <input class="form-control form-control-sm" style="max-width:240px" placeholder="Search item..." id="searchInput">
+              <select class="form-select form-select-sm" style="max-width:200px" id="statusFilter">
+                <option value="all">All statuses</option>
+                <option value="sufficient">Sufficient</option>
+                <option value="low">Low</option>
+                <option value="almostout">Almost out</option>
               </select>
             </div>
           </div>
-
           <div class="table-responsive">
             <table class="table align-middle mb-0">
               <thead class="table-light">
                 <tr>
-                  <th style="min-width:220px;">Item</th>
-                  <th style="min-width:160px;">Current</th>
-                  <th style="min-width:140px;">Usage/day</th>
-                  <th style="min-width:120px;">Days left</th>
-                  <th style="min-width:120px;">Status</th>
-                  <th style="min-width:120px;" class="text-end">Actions</th>
+                  <th>Item</th>
+                  <th>Current stock</th>
+                  <th>Avg. usage/day (30d)</th>
+                  <th>Days left</th>
+                  <th>Status</th>
+                  <th class="text-end">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr class="table-warning">
-                  <td>
-                    <div class="fw-semibold">Chicken feed</div>
-                    <div class="text-muted small">20kg per bag</div>
-                  </td>
-                  <td>180kg <span class="text-muted small">(9 bags)</span></td>
-                  <td>10kg</td>
-                  <td class="fw-semibold">18 days</td>
-                  <td>
-                    <span class="badge bg-warning text-dark">Low</span>
-                  </td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-outline-secondary edit-btn">Edit</button>
-                  </td>
-                </tr>
-
-                <tr class="table-danger">
-                  <td>
-                    <div class="fw-semibold">Pig feed</div>
-                    <div class="text-muted small">25kg per bag</div>
-                  </td>
-                  <td>150kg <span class="text-muted small">(6 bags)</span></td>
-                  <td>15kg</td>
-                  <td class="fw-semibold">10 days</td>
-                  <td>
-                    <span class="badge bg-danger">Almost out</span>
-                  </td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-outline-secondary edit-btn">Edit</button>
-                  </td>
-                </tr>
-
-                <tr>
-                  <td>
-                    <div class="fw-semibold">Rabbit feed</div>
-                    <div class="text-muted small">10kg per bag</div>
-                  </td>
-                  <td>150kg <span class="text-muted small">(15 bags)</span></td>
-                  <td>1.2kg</td>
-                  <td class="fw-semibold">125 days</td>
-                  <td>
-                    <span class="badge bg-success">Sufficient</span>
-                  </td>
-                  <td class="text-end">
-                    <button class="btn btn-sm btn-outline-secondary edit-btn">Edit</button>
-                  </td>
-                </tr>
+              <tbody id="inventoryTableBody">
+                <tr><td colspan="6" class="text-center text-muted">loading...</td></tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <!-- Bottom row -->
+        <!-- usage last 30 days -->
         <div class="row g-3">
-          <!-- Usage last 30 days -->
-          <div class="col-lg-7">
+          <div class="col-lg-12">
             <div class="card border-0 shadow-sm h-100">
-              <div class="card-header bg-white fw-semibold">
-                <i class="bi bi-graph-down me-2"></i>Usage (last 30 days)
-              </div>
-              <div class="card-body">
-                <div class="mb-3">
-                  <div class="d-flex justify-content-between">
-                    <div class="fw-semibold">Pig feed</div>
-                    <div class="text-muted small">425kg / 450kg</div>
-                  </div>
-                  <div class="progress" style="height: 14px;">
-                    <div class="progress-bar" style="width: 94%"></div>
-                  </div>
-                </div>
-
-                <div>
-                  <div class="d-flex justify-content-between">
-                    <div class="fw-semibold">Chicken feed</div>
-                    <div class="text-muted small">216kg / 300kg</div>
-                  </div>
-                  <div class="progress" style="height: 14px;">
-                    <div class="progress-bar" style="width: 72%"></div>
-                  </div>
-                </div>
-
-                <div class="text-muted small mt-3">
-                  * Bars show usage vs configured monthly limit.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Predictions -->
-          <div class="col-lg-5">
-            <div class="card border-0 shadow-sm h-100">
-              <div class="card-header bg-white fw-semibold">
-                <i class="bi bi-calendar2-check me-2"></i>Predictions
-              </div>
-              <div class="card-body">
-                <div class="alert alert-warning mb-3">
-                  <div class="fw-semibold mb-1">
-                    <i class="bi bi-exclamation-triangle me-2"></i>Recommended orders
-                  </div>
-                  <ul class="mb-0">
-                    <li>Chicken feed: order within 3 days</li>
-                    <li>Pig feed: order within 7 days</li>
-                  </ul>
-                </div>
-
-                <!-- Create order button opens modal -->
-                <button class="btn btn-warning w-100" data-bs-toggle="modal" data-bs-target="#createOrderModal">
-                  <i class="bi bi-cart3 me-2"></i>Create order
+              <div class="card-header bg-white d-flex align-items-center justify-content-between">
+                <span class="fw-semibold"><i class="bi bi-graph-down me-2"></i>Usage last 30 days</span>
+                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#usageHistoryModal">
+                  <i class="bi bi-list-ul me-1"></i>View history
                 </button>
-
-                <div class="text-muted small mt-2">
-                  * Based on usage/day and current stock.
-                </div>
               </div>
+              <div class="card-body" id="usageContainer"><p class="text-muted">loading...</p></div>
             </div>
           </div>
         </div>
@@ -299,27 +113,60 @@
     </div>
   </div>
 
-  <!-- EDIT MODAL (English) -->
-  <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+  <!-- ADD MODAL -->
+  <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="editModalLabel">Edit item</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add inventory item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addForm">
+            <div class="mb-3">
+              <label class="form-label">Item name</label>
+              <input type="text" class="form-control" id="addItemName" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Initial stock (kg)</label>
+              <input type="number" step="0.1" min="0" class="form-control" id="addInitialStock" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Manual avg. usage (kg/day) <span class="text-muted">(optional)</span></label>
+              <input type="number" step="0.1" min="0" class="form-control" id="addManualAvg" value="0">
+              <div class="form-text">If set, this overrides the 30‑day average from usage logs.</div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveAddBtn">Add item</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit item</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form>
             <div class="mb-3">
-              <label for="editItemName" class="form-label">Item name</label>
-              <input type="text" class="form-control" id="editItemName" readonly>
+              <label class="form-label">Item name</label>
+              <input type="text" class="form-control" id="editItemName">
             </div>
             <div class="mb-3">
-              <label for="editCurrentStock" class="form-label">Current stock (kg)</label>
-              <input type="number" class="form-control" id="editCurrentStock" step="0.1">
+              <label class="form-label">Current stock (kg)</label>
+              <input type="number" step="0.1" min="0" class="form-control" id="editCurrentStock">
             </div>
             <div class="mb-3">
-              <label for="editUsagePerDay" class="form-label">Usage per day (kg)</label>
-              <input type="number" class="form-control" id="editUsagePerDay" step="0.1">
+              <label class="form-label">Manual avg. usage (kg/day) <span class="text-muted">(0 = use automatic)</span></label>
+              <input type="number" step="0.1" min="0" class="form-control" id="editManualAvg" value="0">
             </div>
           </form>
         </div>
@@ -331,83 +178,133 @@
     </div>
   </div>
 
-  <!-- CREATE ORDER MODAL (English) -->
-  <div class="modal fade" id="createOrderModal" tabindex="-1" aria-labelledby="createOrderModalLabel" aria-hidden="true">
+  <!-- CONSUME MODAL -->
+  <div class="modal fade" id="consumeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="createOrderModalLabel">Create new order</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title"><i class="bi bi-arrow-down-circle me-2"></i>Log usage</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <form>
             <div class="mb-3">
-              <label for="orderItem" class="form-label">Item</label>
-              <select class="form-select" id="orderItem">
-                <option selected>Chicken feed</option>
-                <option>Pig feed</option>
-                <option>Rabbit feed</option>
-              </select>
+              <label class="form-label">Date</label>
+              <input type="date" class="form-control" id="consumeDate" required>
             </div>
             <div class="mb-3">
-              <label for="orderQuantity" class="form-label">Quantity (kg)</label>
-              <input type="number" class="form-control" id="orderQuantity" value="100" step="1">
+              <label class="form-label">Amount used (kg)</label>
+              <input type="number" step="0.1" min="0.1" class="form-control" id="consumeAmount" required>
             </div>
             <div class="mb-3">
-              <label for="orderDate" class="form-label">Desired delivery date</label>
-              <input type="date" class="form-control" id="orderDate">
+              <label class="form-label">Reason (optional)</label>
+              <input type="text" class="form-control" id="consumeReason" placeholder="e.g. Daily feeding">
             </div>
           </form>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" id="saveOrderBtn">Place order</button>
+          <button type="button" class="btn btn-warning" id="saveConsumeBtn">Log usage</button>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- HISTORY MODAL (per item) -->
+  <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Usage history</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <h6 id="historyItemName" class="fw-semibold"></h6>
+          <table class="table table-sm">
+            <thead><tr><th>Date</th><th>Amount (kg)</th><th>Reason</th></tr></thead>
+            <tbody id="historyTableBody"></tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- USAGE HISTORY MODAL (alle movements laatste 30 dagen) -->
+  <div class="modal fade" id="usageHistoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-list-ul me-2"></i>Usage history (last 30 days)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Item</th>
+                <th>Amount (kg)</th>
+                <th>Reason</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usageHistoryTableBody">
+              <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BEVESTIGING MODAL voor verwijderen movement -->
+  <div class="modal fade" id="confirmDeleteMovementModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm delete</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this usage record? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteMovementBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BEVESTIGING MODAL voor verwijderen item -->
+  <div class="modal fade" id="confirmDeleteItemModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm delete</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this item? All associated movements will also be lost.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteItemBtn">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simpele melding -->
+  <div id="simpleMessage" style="position: fixed; top: 20px; right: 20px; background: #198754; color: white; padding: 10px 20px; border-radius: 5px; display: none; z-index: 9999;"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
-    // Minimal JavaScript to populate edit modal with row data and handle save actions
-    document.addEventListener('DOMContentLoaded', function () {
-      const editModalEl = document.getElementById('editModal');
-      const editModal = new bootstrap.Modal(editModalEl);
-
-      // Edit buttons
-      document.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-          const row = this.closest('tr');
-          const cells = row.querySelectorAll('td');
-
-          // Extract data
-          const itemName = cells[0].querySelector('.fw-semibold').innerText;
-          const currentText = cells[1].innerText;    // e.g. "180kg (9 bags)"
-          const currentKg = parseFloat(currentText) || 0;
-          const usageText = cells[2].innerText;      // e.g. "10kg"
-          const usageKg = parseFloat(usageText) || 0;
-
-          // Fill modal fields
-          document.getElementById('editItemName').value = itemName;
-          document.getElementById('editCurrentStock').value = currentKg;
-          document.getElementById('editUsagePerDay').value = usageKg;
-
-          editModal.show();
-        });
-      });
-
-      // Save edit (demo)
-      document.getElementById('saveEditBtn').addEventListener('click', function () {
-        alert('Changes saved (demo)');
-        editModal.hide();
-      });
-
-      // Save order (demo)
-      document.getElementById('saveOrderBtn').addEventListener('click', function () {
-        alert('Order placed (demo)');
-        bootstrap.Modal.getInstance(document.getElementById('createOrderModal')).hide();
-      });
-    });
-  </script>
+  <script src="/inventory/script.js"></script>
 </body>
 </html>
