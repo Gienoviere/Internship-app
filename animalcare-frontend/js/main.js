@@ -64,17 +64,17 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireAuthUI();
   wireAdminActions();
 
-  on("btnRefresh", "click", async () => {
+  on("btnRefresh3", "click", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
   });
-  on("roleView", "change", async () => {
+  on("roleView3", "change", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
   });
-  on("globalDate", "change", async () => {
+  on("globalDate3", "change", async () => {
     try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
   });
 
-  on("btnOpenDetails", "click", () => {
+  on("btnOpenDetails3", "click", () => {
     if (!window.bootstrap) return;
     const el = $("detailsModal");
     if (!el) return;
@@ -83,7 +83,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   on("btnObsCreate3", "click", async () => {
   try {
-    const date = $("globalDate")?.value || isoToday();
+    const date = $("globalDate3")?.value || isoToday();
     await createObservation(date);
     await loadObservations(date);
   } catch (e) {
