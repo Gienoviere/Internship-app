@@ -3,9 +3,11 @@ import { state } from "./state.js";
 import { $ } from "./dom.js";
 import { setAlert } from "./ui.js";
 
-console.log("[SUPERVISOR] loadSupervisorQueue date =", date);
+console.log("[supervisor.js] loaded");
 
 export async function loadSupervisorQueue(date) {
+  console.log("[SUPERVISOR] loadSupervisorQueue date =", date);
+
   if (!date) date = new Date().toISOString().slice(0, 10);
   
   const wrap = $("supQueue3");
