@@ -14,6 +14,8 @@ const date = (dateEl && dateEl.value) ? dateEl.value : isoToday();
 if (dateEl && !dateEl.value) dateEl.value = date;
 
 export async function refreshAll() {
+  console.log("[main.js] refreshAll called");
+
   const date = $("globalDate3")?.value || isoToday();
 
   state.currentUser = await api("/auth/me");
