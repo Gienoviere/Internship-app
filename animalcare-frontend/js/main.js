@@ -51,9 +51,11 @@ export async function refreshAll() {
     state.currentUser?.role === "SUPERVISOR" ||
     state.currentUser?.role === "ADMIN"
   ) {
-    await loadSupervisorQueue(date);
+    
     if (!date) date = isoToday();
   }
+
+  await loadSupervisorQueue(date);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -76,7 +78,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   on("btnOpenDetails3", "click", () => {
     if (!window.bootstrap) return;
-    const el = $("detailsModal");
+    const el = $("detailsModal3");
     if (!el) return;
     new bootstrap.Modal(el).show();
   });
