@@ -3,9 +3,11 @@ import { state } from "./state.js";
 import { $ } from "./dom.js";
 import { setAlert } from "./ui.js";
 
+console.log("[SUPERVISOR] loadSupervisorQueue date =", date);
+
 export async function loadSupervisorQueue(date) {
   if (!date) date = new Date().toISOString().slice(0, 10);
-  console.log("[SUPERVISOR] loadSupervisorQueue date =", date);
+  
   const wrap = $("supQueue3");
   const kpi = $("supPendingCount3"); // optional KPI
   if (!wrap) return;
