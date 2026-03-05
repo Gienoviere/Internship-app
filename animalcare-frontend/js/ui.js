@@ -1,11 +1,5 @@
-import { $, setHTML, setText, show, hide, } from "./dom.js";
+import { $, setText } from "./dom.js";
 import { state } from "./state.js";
-
-export function getSelectedDate() {
-  const el = document.getElementById("globalDate3");
-  if (el && el.value && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) return el.value;
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function setAlert(type, msg) {
   const box = $("alertBox3");
@@ -14,6 +8,7 @@ export function setAlert(type, msg) {
   const icon =
     type === "success" ? "check-circle-fill" :
     type === "danger"  ? "exclamation-triangle-fill" :
+    type === "warning" ? "exclamation-triangle-fill" :
                          "info-circle-fill";
 
   box.className = `alert alert-${type} d-flex align-items-center`;
@@ -30,44 +25,40 @@ export function badgeForStatus(status) {
 }
 
 export function getRoleView() {
+  const v = $("roleView3")?.value;
+  if (v && v !== "auto") return v;
+
   const r = state.currentUser?.role;
   if (r === "ADMIN") return "admin";
   if (r === "SUPERVISOR") return "supervisor";
-  return "caretaker"; // USER
+  return "caretaker";
 }
 
 export function updateRoleSpecificUI(view) {
-  // First hide all role-only blocks
+  // hide all
   document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only").forEach(el => {
     el.classList.add("d-none");
   });
 
-  // Then show only the chosen view
+  // show selected view blocks
   document.querySelectorAll(`.${view}-only`).forEach(el => {
     el.classList.remove("d-none");
   });
-
-  const adminExtras = $("adminExtras");
-  if (adminExtras) adminExtras.classList.toggle("d-none", view !== "admin");
-
-  const adminSpecificUI = $("adminSpecificUI");
-  if (adminSpecificUI) adminSpecificUI.classList.toggle("d-none", view !== "admin");
 }
 
 export function setHeader(view) {
   const titles = {
-    admin: { title: "Admin Dashboard", subtitle: "Overzicht, gemiste taken, voorraadwaarschuwingen en dagelijkse status." },
-    supervisor: { title: "Supervisor Dashboard", subtitle: "Keur aanvragen goed of keur ze af." },
-    caretaker: { title: "Caretaker Dashboard", subtitle: "Log dagelijkse taken snel en accuraat." }
+    admin: { title: "Admin Dashboard", subtitle: "Overview, missed tasks, inventory warnings, and daily status." },
+    supervisor: { title: "Supervisor Dashboard", subtitle: "Approve or reject pending logs." },
+    caretaker: { title: "Caretaker Dashboard", subtitle: "Log daily tasks fast and clearly." }
   };
-
-  const t = titles[view] || { title: "Dashboard" };
-  setText("pageTitle", t.title);
-  setText("pageSubtitle", t.subtitle);
+  const t = titles[view] || { title: "Dashboard", subtitle: "" };
+  setText("pageTitle3", t.title);
+  setText("pageSubtitle3", t.subtitle);
 }
 
 export function setRoleBadge() {
-  const badge = $("userRoleBadge");
+  const badge = $("userRoleBadge3");
   if (!badge) return;
 
   if (!state.currentUser) {
@@ -83,28 +74,29 @@ export function setRoleBadge() {
 export function applyRoleVisibility() {
   const role = state.currentUser?.role;
 
-  // Hide all role-based UI
-  document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only")
-    .forEach(el => el.classList.add("d-none"));
+  // Hide everything role-gated first (IMPORTANT: dots on ALL classes)
+  document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only").forEach(el => {
+    el.classList.add("d-none");
+  });
 
   if (!role) return;
 
   if (role === "ADMIN") {
-    document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only")
-      .forEach(el => el.classList.remove("d-none"));
+    document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only").forEach(el => {
+      el.classList.remove("d-none");
+    });
+    return;
   }
-  else if (role === "SUPERVISOR") {
-    document.querySelectorAll(".supervisor-only,.caretaker-only")
-      .forEach(el => el.classList.remove("d-none"));
-  }
-  else {
-    document.querySelectorAll(".caretaker-only")
-      .forEach(el => el.classList.remove("d-none"));
-  }
-}
 
-function toggle(id, visible) {
-  const el = $(id);
-  if (!el) return;
-  visible ? el.classList.remove("d-none") : el.classList.add("d-none");
+  if (role === "SUPERVISOR") {
+    document.querySelectorAll(".supervisor-only,.caretaker-only").forEach(el => {
+      el.classList.remove("d-none");
+    });
+    return;
+  }
+
+  // USER / caretaker
+  document.querySelectorAll(".caretaker-only").forEach(el => {
+    el.classList.remove("d-none");
+  });
 }
