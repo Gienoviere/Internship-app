@@ -8,25 +8,34 @@ const router = express.Router();
 function isValidISODateOnly(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
+
 function toDateOnlyUTC(dateStr) {
   const [y, m, d] = dateStr.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
+}
+
+function nextDayUTC(day) {
+  const n = new Date(day);
+  n.setUTCDate(n.getUTCDate() + 1);
+  return n;
 }
 
 // GET /supervisor/logs?date=YYYY-MM-DD&status=PENDING
 router.get("/logs", requireAuth, requireRole(["SUPERVISOR", "ADMIN"]), async (req, res) => {
   try {
     const { date, status = "PENDING" } = req.query;
+
     if (!isValidISODateOnly(date)) {
       return res.status(400).json({ error: "date query param required: YYYY-MM-DD" });
     }
 
     const day = toDateOnlyUTC(date);
+    const next = nextDayUTC(day);
 
     const logs = await prisma.dailyLog.findMany({
       where: {
-        date: day,
-        approvalStatus: status,
+        date: { gte: day, lt: next },         // ✅ robust day window
+        approvalStatus: String(status),
       },
       include: {
         task: { select: { id: true, name: true, category: true } },
@@ -36,8 +45,8 @@ router.get("/logs", requireAuth, requireRole(["SUPERVISOR", "ADMIN"]), async (re
     });
 
     res.json(logs);
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "Server error" });
   }
 });

@@ -9,22 +9,26 @@ export async function loadSupervisorQueue(date) {
   console.log("[SUPERVISOR] loadSupervisorQueue date =", date);
 
   if (!date) date = new Date().toISOString().slice(0, 10);
-  
+
   const wrap = $("supQueue3");
   const kpi = $("supPendingCount3"); // optional KPI
   if (!wrap) return;
 
+  let logs = []; // ✅ define here so it exists everywhere
+
   try {
-    const logs = await api(`/supervisor/logs?date=${date}&status=PENDING`);
+    logs = await api(`/supervisor/logs?date=${date}&status=PENDING`);
     state.last.supQueue = logs;
 
     if (kpi) kpi.textContent = String((logs || []).length);
 
     wrap.className = "d-flex flex-column gap-2";
 
-    const top = (logs || []).slice(0, 6); // show more than 3 for real use
+    const top = (logs || []).slice(0, 6);
     wrap.innerHTML = top.length
-      ? top.map(l => `
+      ? top
+          .map(
+            (l) => `
         <div class="card border-warning">
           <div class="card-body p-2">
             <div class="d-flex justify-content-between align-items-start">
@@ -52,24 +56,32 @@ export async function loadSupervisorQueue(date) {
             </div>
           </div>
         </div>
-      `).join("")
+      `
+          )
+          .join("")
       : `<div class="alert alert-secondary small mb-0">
           <i class="bi bi-info-circle me-1"></i>No pending logs for this date.
         </div>`;
 
-    wrap.querySelectorAll("button[data-approve]").forEach(btn => {
-      btn.addEventListener("click", () => decideLog(date, btn.dataset.approve, "APPROVED"));
+    wrap.querySelectorAll("button[data-approve]").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        decideLog(date, btn.dataset.approve, "APPROVED")
+      );
     });
-    wrap.querySelectorAll("button[data-reject]").forEach(btn => {
-      btn.addEventListener("click", () => decideLog(date, btn.dataset.reject, "REJECTED"));
+
+    wrap.querySelectorAll("button[data-reject]").forEach((btn) => {
+      btn.addEventListener("click", () =>
+        decideLog(date, btn.dataset.reject, "REJECTED")
+      );
     });
   } catch (e) {
-    // If role not allowed or endpoint not present
     if (kpi) kpi.textContent = "—";
     wrap.innerHTML = `<div class="alert alert-secondary small mb-0">
-    <i class="bi bi-info-circle me-1"></i>${e?.message || "Supervisor queue unavailable."}
-  </div>`;
+      <i class="bi bi-info-circle me-1"></i>${e?.message || "Supervisor queue unavailable."}
+    </div>`;
   }
+
+  console.log("[SUPERVISOR] pending logs:", logs.length); // ✅ now safe
 }
 
 async function decideLog(date, id, approvalStatus) {
