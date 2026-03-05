@@ -14,6 +14,8 @@ const date = (dateEl && dateEl.value) ? dateEl.value : isoToday();
 if (dateEl && !dateEl.value) dateEl.value = date;
 
 export async function refreshAll() {
+  console.log("[main.js] refreshAll called");
+
   const date = $("globalDate3")?.value || isoToday();
 
   state.currentUser = await api("/auth/me");
@@ -51,9 +53,11 @@ export async function refreshAll() {
     state.currentUser?.role === "SUPERVISOR" ||
     state.currentUser?.role === "ADMIN"
   ) {
-    await loadSupervisorQueue(date);
+    
     if (!date) date = isoToday();
   }
+
+  await loadSupervisorQueue(date);
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
@@ -76,7 +80,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   on("btnOpenDetails3", "click", () => {
     if (!window.bootstrap) return;
-    const el = $("detailsModal");
+    const el = $("detailsModal3");
     if (!el) return;
     new bootstrap.Modal(el).show();
   });
