@@ -98,3 +98,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadMe();
 });
+
+export function getSelectedDate() {
+  // 1) URL override (useful for supervisors/admins and reproducible)
+  const urlDate = new URLSearchParams(window.location.search).get("date");
+  if (urlDate && /^\d{4}-\d{2}-\d{2}$/.test(urlDate)) return urlDate;
+
+  // 2) Date input (if present)
+  const el = document.getElementById("globalDate3");
+  if (el && el.value) return el.value;
+
+  // 3) Fallback: today
+  return new Date().toISOString().slice(0, 10);
+}
