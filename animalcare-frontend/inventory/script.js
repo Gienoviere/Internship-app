@@ -25,9 +25,10 @@
     return res.json();
   }
 
-  function showMessage(text) {
+  function showMessage(text, isError = false) {
     const msg = document.getElementById('simpleMessage');
-    msg.textContent = '✔️ ' + text;
+    msg.textContent = (isError ? '❌ ' : '✔️ ') + text;
+    msg.style.backgroundColor = isError ? '#dc3545' : '#198754'; // rood voor fout, groen voor succes
     msg.style.display = 'block';
     setTimeout(() => { msg.style.display = 'none'; }, 2500);
   }
@@ -58,6 +59,14 @@
   let currentConsumeId = null;
   let currentDeleteMovementId = null;
   let currentDeleteItemId = null;
+
+  // Helper: check for duplicate item name (case‑insensitive)
+  function isDuplicateName(name, excludeId = null) {
+    const normalized = name.trim().toLowerCase();
+    return feedItems.some(item => 
+      item.name.toLowerCase() === normalized && (excludeId === null || item.id !== excludeId)
+    );
+  }
 
   // Helper functions
   function getStatus(daysLeft, stockKg) {
@@ -132,11 +141,12 @@
       else if (status === 'almostout') { statusBadge = '<span class="badge bg-danger">Almost out</span>'; rowClass = 'table-danger'; }
       else { statusBadge = '<span class="badge bg-secondary">Unknown</span>'; }
 
-      // Show average cell: if stock is zero, maybe gray out? We'll keep as is.
+      // Average cell: if stock is zero, maybe gray out? We'll keep as is.
       const avgCell = usage > 0 ? usage.toFixed(1) + ' kg' + (manualAvgUsage[item.id] ? ' ✏️' : '') : '-';
 
+      // NOTE: ID is intentionally not shown to the user (removed the ID line)
       html += `<tr class="${rowClass}" data-id="${item.id}">
-        <td><div class="fw-semibold">${item.name}</div><div class="text-muted small">ID: ${item.id}</div></td>
+        <td><div class="fw-semibold">${item.name}</div></td>
         <td>${stockKg.toFixed(1)} kg</td>
         <td>${avgCell}</td>
         <td class="fw-semibold">${daysLeft}</td>
@@ -426,6 +436,11 @@
     const stock = parseFloat(document.getElementById('editCurrentStock').value);
     const manual = parseFloat(document.getElementById('editManualAvg').value) || 0;
     if (!name || isNaN(stock) || stock < 0) { alert('Invalid input'); return; }
+    // Prevent duplicate name (excluding current item)
+    if (isDuplicateName(name, currentEditId)) {
+      showMessage('An item with this name already exists. Please use a different name.', true);
+      return;
+    }
     await updateItem(currentEditId, name, stock, manual);
     bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
   });
@@ -447,6 +462,11 @@
     const stock = parseFloat(document.getElementById('addInitialStock').value);
     const manual = parseFloat(document.getElementById('addManualAvg').value) || 0;
     if (!name || isNaN(stock) || stock < 0) { alert('Invalid input'); return; }
+    // Prevent duplicate name
+    if (isDuplicateName(name)) {
+      showMessage('An item with this name already exists. Please use a different name.', true);
+      return;
+    }
     await addItem(name, stock, manual);
     document.getElementById('addItemName').value = '';
     document.getElementById('addInitialStock').value = '';
