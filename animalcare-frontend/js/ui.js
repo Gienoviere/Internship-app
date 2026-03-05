@@ -1,6 +1,12 @@
 import { $, setHTML, setText, show, hide, } from "./dom.js";
 import { state } from "./state.js";
 
+export function getSelectedDate() {
+  const el = document.getElementById("globalDate3");
+  if (el && el.value && /^\d{4}-\d{2}-\d{2}$/.test(el.value)) return el.value;
+  return new Date().toISOString().slice(0, 10);
+}
+
 export function setAlert(type, msg) {
   const box = $("alertBox3");
   if (!box) return alert(msg);

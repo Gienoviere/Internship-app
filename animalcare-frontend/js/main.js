@@ -5,7 +5,7 @@ import { wireAuthUI, loadMe, setOnLoginSuccess } from "./auth.js";
 import { loadTasksToday } from "./caretaker.js";
 import { loadAdminPanels } from "./admin.js";
 import { loadSupervisorQueue } from "./supervisor.js";
-import { getRoleView, updateRoleSpecificUI, setHeader, setRoleBadge, setAlert, applyRoleVisibility } from "./ui.js";
+import { getRoleView, updateRoleSpecificUI, setHeader, setRoleBadge, setAlert, applyRoleVisibility, getSelectedDate } from "./ui.js";
 import { loadObservations, createObservation } from "./observations.js";
 import { wireAdminActions } from "./admin.js";
 
