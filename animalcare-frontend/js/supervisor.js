@@ -14,7 +14,7 @@ export async function loadSupervisorQueue(date) {
   const kpi = $("supPendingCount3"); // optional KPI
   if (!wrap) return;
 
-  let logs = []; // ✅ define here so it exists everywhere
+  let logs = []; 
 
   try {
     logs = await api(`/supervisor/logs?date=${date}&status=PENDING`);
@@ -81,7 +81,7 @@ export async function loadSupervisorQueue(date) {
     </div>`;
   }
 
-  console.log("[SUPERVISOR] pending logs:", logs.length); // ✅ now safe
+  console.log("[SUPERVISOR] pending logs:", logs.length);
 }
 
 async function decideLog(date, id, approvalStatus) {

@@ -1,13 +1,11 @@
 import { isoToday, api } from "./api.js";
 import { state } from "./state.js";
-import { on, $ , setHTML } from "./dom.js";
-
+import { on, $, setHTML } from "./dom.js";
 import { wireAuthUI, loadMe, setOnLoginSuccess } from "./auth.js";
 import { loadTasksToday } from "./caretaker.js";
 import { loadAdminPanels, wireAdminActions } from "./admin.js";
 import { loadSupervisorQueue } from "./supervisor.js";
 import { loadObservations, createObservation } from "./observations.js";
-
 import {
   getRoleView,
   updateRoleSpecificUI,
@@ -22,13 +20,13 @@ export async function refreshAll() {
 
   console.log("[main.js] refreshAll date =", date);
 
-  // ensure we have current user
+  // Sync current user from backend so role-based UI always uses real data
   state.currentUser = await api("/auth/me");
 
-  // show correct role sections/buttons
+  // Show/hide role sections first
   applyRoleVisibility();
 
-  // Backend badge
+  // Backend status badge
   try {
     await api("/health");
     setHTML("kpiBackend3", `<span class="badge bg-success">Online</span>`);
@@ -36,47 +34,73 @@ export async function refreshAll() {
     setHTML("kpiBackend3", `<span class="badge bg-danger">Offline</span>`);
   }
 
-  // caretaker tasks always visible
+  // Caretaker/common panels
   await loadTasksToday(date);
-
-  // observations
   await loadObservations(date);
 
-  // headers + chosen view
+  // Titles + role/view-specific UI
   const view = getRoleView();
   setHeader(view);
   updateRoleSpecificUI(view);
   setRoleBadge();
 
-  // admin panels
+  // Admin panels
   if (state.currentUser?.role === "ADMIN" || view === "admin") {
     await loadAdminPanels(date);
   }
 
-  // supervisor queue (supervisor + admin)
-  if (state.currentUser?.role === "SUPERVISOR" || state.currentUser?.role === "ADMIN" || view === "supervisor") {
+  // Supervisor queue
+  if (
+    state.currentUser?.role === "SUPERVISOR" ||
+    state.currentUser?.role === "ADMIN" ||
+    view === "supervisor"
+  ) {
     await loadSupervisorQueue(date);
   }
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
-  if ($("globalDate3")) $("globalDate3").value = isoToday();
+  // Default date
+  if ($("globalDate3")) {
+    $("globalDate3").value = isoToday();
+  }
 
+  // Let auth.js call refreshAll after successful login
   setOnLoginSuccess(refreshAll);
 
+  // Wire UI
   wireAuthUI();
   wireAdminActions();
 
   on("btnRefresh3", "click", async () => {
-    try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
+    try {
+      await refreshAll();
+    } catch (e) {
+      setAlert("danger", e.message || "Refresh failed");
+    }
   });
 
   on("roleView3", "change", async () => {
-    try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
+    try {
+      await refreshAll();
+    } catch (e) {
+      setAlert("danger", e.message || "Role switch failed");
+    }
   });
 
   on("globalDate3", "change", async () => {
-    try { await refreshAll(); } catch (e) { setAlert("danger", e.message); }
+    try {
+      await refreshAll();
+    } catch (e) {
+      setAlert("danger", e.message || "Date change failed");
+    }
+  });
+
+  on("btnOpenDetails3", "click", () => {
+    if (!window.bootstrap) return;
+    const el = $("detailsModal3");
+    if (!el) return;
+    new bootstrap.Modal(el).show();
   });
 
   on("btnObsCreate3", "click", async () => {
@@ -86,9 +110,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       await loadObservations(date);
       setAlert("success", "Observation added.");
     } catch (e) {
-      setAlert("danger", e.message);
+      setAlert("danger", e.message || "Observation failed");
     }
   });
 
-  await loadMe();
+  // Initial auth check + app load
+  try {
+    await loadMe();
+  } catch (e) {
+    console.error("Initial loadMe failed:", e);
+  }
 });
