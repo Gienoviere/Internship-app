@@ -21,7 +21,9 @@ export async function refreshAll() {
   console.log("[main.js] refreshAll date =", date);
 
   // Sync current user from backend so role-based UI always uses real data
-  state.currentUser = await api("/auth/me");
+  const me = await api("/auth/me");
+  state.currentUser = me.user || me;
+  const currentUser = state.currentUser;
 
   // Show/hide role sections first
   applyRoleVisibility();
@@ -32,6 +34,11 @@ export async function refreshAll() {
     setHTML("kpiBackend3", `<span class="badge bg-success">Online</span>`);
   } catch {
     setHTML("kpiBackend3", `<span class="badge bg-danger">Offline</span>`);
+  }
+
+  const badge = document.getElementById("userRoleBadge3");
+  if (badge) {
+    badge.textContent = currentUser?.role || "Unknown role";
   }
 
   // Caretaker/common panels
@@ -45,18 +52,17 @@ export async function refreshAll() {
   setRoleBadge();
 
   // Admin panels
-  if (state.currentUser?.role === "ADMIN" || view === "admin") {
-    await loadAdminPanels(date);
-  }
+  if (currentUser?.role === "ADMIN" || view === "admin") {
+  await loadAdminPanels(date);
+}
 
-  // Supervisor queue
-  if (
-    state.currentUser?.role === "SUPERVISOR" ||
-    state.currentUser?.role === "ADMIN" ||
-    view === "supervisor"
-  ) {
-    await loadSupervisorQueue(date);
-  }
+if (
+  currentUser?.role === "SUPERVISOR" ||
+  currentUser?.role === "ADMIN" ||
+  view === "supervisor"
+) {
+  await loadSupervisorQueue(date);
+}
 }
 
 document.addEventListener("DOMContentLoaded", async () => {
