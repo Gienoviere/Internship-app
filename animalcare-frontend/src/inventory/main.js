@@ -7,13 +7,14 @@ import {
 import {
   feedItems, setFeedItems, movements, setMovements,
   manualAvgUsage, updateManualAvg, isDuplicateName,
-  getDisplayAvg, getStatus
+  getDisplayAvg, getStatus, recomputeAvgUsageCache
 } from './state.js';
 import {
   renderTable, renderUsage, renderUsageHistory, showHistory,
   showMessage, showBackendError, hideBackendError,
-  showMovementsWarning, hideMovementsWarning
+  showMovementsWarning, hideMovementsWarning, updatePeriodLabels   // <-- nieuw
 } from './ui.js';
+import { loadSettings, saveSettings } from './settings.js';
 
 // Globale variabelen voor modals
 let currentEditId = null;
@@ -51,7 +52,6 @@ async function loadMovements() {
 async function addItem(name, stockKg, manualAvg) {
   const stockGrams = Math.round(stockKg * 1000);
   const newItem = await createFeedItem(name, stockGrams);
-  // Voeg toe aan state
   const updated = [...feedItems, newItem];
   setFeedItems(updated);
   if (manualAvg > 0) {
@@ -73,7 +73,6 @@ async function updateItem(id, name, stockKg, manualAvg) {
 
   if (Object.keys(updates).length > 0) {
     await patchFeedItem(id, updates);
-    // Pas local state aan
     const updatedItems = feedItems.map(i =>
       i.id === id ? { ...i, ...updates } : i
     );
@@ -90,10 +89,9 @@ async function deleteItem(id) {
   await deleteFeedItem(id);
   const updatedItems = feedItems.filter(i => i.id !== id);
   setFeedItems(updatedItems);
-  // movements worden apart gefilterd (via setMovements)
   const updatedMovements = movements.filter(m => m.feedItemId !== id);
-  setMovements(updatedMovements); // triggert herberekening
-  updateManualAvg(id, 0); // verwijderd handmatige waarde
+  setMovements(updatedMovements);
+  updateManualAvg(id, 0);
   renderTable();
   renderUsage();
   showMessage('Item deleted');
@@ -102,7 +100,6 @@ async function deleteItem(id) {
 async function addConsumption(feedItemId, date, amountKg, reason) {
   const deltaGrams = -Math.round(amountKg * 1000);
   await createMovement(feedItemId, date, deltaGrams, reason);
-  // Herlaad movements en items (de stock is op de server aangepast)
   await loadMovements();
   await loadFeedItems();
   showMessage('Usage logged');
@@ -219,6 +216,105 @@ document.addEventListener('DOMContentLoaded', () => {
     bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
   });
 
+  // ---- Settings modal ----
+  const settingsModalEl = document.getElementById('settingsModal');
+  const settingsForm = document.getElementById('settingsForm');
+  const settingsFormError = document.getElementById('settingsFormError');
+
+  const lowInput = document.getElementById('settingsLowThreshold');
+  const almostInput = document.getElementById('settingsAlmostOutThreshold');
+  const avgInput = document.getElementById('settingsAvgDays');
+
+  const lowFeedback = document.getElementById('lowThresholdFeedback');
+  const almostFeedback = document.getElementById('almostOutThresholdFeedback');
+  const avgFeedback = document.getElementById('avgDaysFeedback');
+
+  // Helper om een veld te valideren op positief geheel getal
+  function validatePositiveInt(input, feedbackEl) {
+    const value = parseInt(input.value, 10);
+    if (isNaN(value) || value < 1 || !Number.isInteger(value)) {
+      input.classList.add('is-invalid');
+      feedbackEl.textContent = 'Please enter a valid positive whole number.';
+      return false;
+    } else {
+      input.classList.remove('is-invalid');
+      feedbackEl.textContent = 'Please enter a valid positive number.'; // herstel standaardtekst
+      return true;
+    }
+  }
+
+  // Reset bij openen modal
+  settingsModalEl.addEventListener('show.bs.modal', () => {
+    // Verwijder alle is-invalid classes
+    [lowInput, almostInput, avgInput].forEach(input => {
+      input.classList.remove('is-invalid');
+    });
+    // Herstel standaard feedback-teksten
+    lowFeedback.textContent = 'Please enter a valid positive number.';
+    almostFeedback.textContent = 'Please enter a valid positive number.';
+    avgFeedback.textContent = 'Please enter a valid positive number.';
+    // Verberg algemene foutmelding
+    settingsFormError.classList.add('d-none');
+    
+    // Laad opgeslagen waarden
+    const settings = loadSettings();
+    lowInput.value = settings.lowThreshold;
+    almostInput.value = settings.almostOutThreshold;
+    avgInput.value = settings.avgDays;
+  });
+
+  document.getElementById('saveSettingsBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+
+    // Stap 1: Valideer elk veld individueel
+    const lowValid = validatePositiveInt(lowInput, lowFeedback);
+    const almostValid = validatePositiveInt(almostInput, almostFeedback);
+    const avgValid = validatePositiveInt(avgInput, avgFeedback);
+
+    // Als een van de velden ongeldig is, stop
+    if (!lowValid || !almostValid || !avgValid) {
+      return;
+    }
+
+    // Stap 2: Logische controle (almost mag niet groter zijn dan low)
+    const low = parseInt(lowInput.value, 10);
+    const almost = parseInt(almostInput.value, 10);
+    const avgDays = parseInt(avgInput.value, 10);
+
+    if (almost > low) {
+      // Beide velden markeren met specifieke foutmelding
+      lowInput.classList.add('is-invalid');
+      almostInput.classList.add('is-invalid');
+      lowFeedback.textContent = 'Low threshold must be greater than or equal to almost out threshold.';
+      almostFeedback.textContent = 'Almost out threshold must be less than or equal to low threshold.';
+      return;
+    } else {
+      // Als logica klopt, eventueel is-invalid verwijderen (voor de zekerheid)
+      lowInput.classList.remove('is-invalid');
+      almostInput.classList.remove('is-invalid');
+      // Herstel standaard feedback (voor het geval ze eerder waren aangepast)
+      lowFeedback.textContent = 'Please enter a valid positive number.';
+      almostFeedback.textContent = 'Please enter a valid positive number.';
+    }
+
+    // Stap 3: Alles OK, opslaan
+    saveSettings({ lowThreshold: low, almostOutThreshold: almost, avgDays });
+
+    // Herbereken gemiddelden met de nieuwe periode
+    recomputeAvgUsageCache();
+
+    // Ververs alle zichtbare onderdelen
+    renderTable();
+    renderUsage();
+    if (document.getElementById('usageHistoryModal').classList.contains('show')) {
+      renderUsageHistory();
+    }
+    updatePeriodLabels();
+
+    bootstrap.Modal.getInstance(settingsModalEl).hide();
+    showMessage('Settings saved');
+  });
+
   // Filters
   document.getElementById('searchInput').addEventListener('input', renderTable);
   document.getElementById('statusFilter').addEventListener('change', renderTable);
@@ -226,6 +322,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Start
   loadFeedItems();
   loadMovements();
+  // Labels eenmalig instellen bij opstarten
+  updatePeriodLabels();
+
   setInterval(() => {
     loadFeedItems();
     loadMovements();

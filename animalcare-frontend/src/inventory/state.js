@@ -1,7 +1,8 @@
 // state.js
 import { LARGE_DAYS } from './config.js';
+import { loadSettings } from './settings.js';
 
-// Globale variabelen (rechtstreeks exporten is leesbaar, maar je kunt ook een object gebruiken)
+// Globale variabelen
 export let feedItems = [];
 export let movements = [];
 export let manualAvgUsage = JSON.parse(localStorage.getItem('inventory_manual_avg') || '{}');
@@ -26,21 +27,23 @@ export function updateManualAvg(id, value) {
   localStorage.setItem('inventory_manual_avg', JSON.stringify(manualAvgUsage));
 }
 
-// Cache opnieuw berekenen op basis van movements (laatste 30 dagen)
-function recomputeAvgUsageCache() {
+// Cache opnieuw berekenen op basis van movements (periode uit instellingen)
+export function recomputeAvgUsageCache() {
+  const settings = loadSettings();
+  const days = settings.avgDays;
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const cutoff = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
   const usageGrams = {};
   movements.forEach(m => {
     const movDate = new Date(m.date);
-    if (movDate >= thirtyDaysAgo && m.deltaGrams < 0) {
+    if (movDate >= cutoff && m.deltaGrams < 0) {
       const id = m.feedItemId;
       usageGrams[id] = (usageGrams[id] || 0) + Math.abs(m.deltaGrams);
     }
   });
   const newCache = {};
   Object.keys(usageGrams).forEach(id => {
-    newCache[id] = usageGrams[id] / 1000 / 30; // kg per dag
+    newCache[id] = usageGrams[id] / 1000 / days; // kg per dag
   });
   avgUsageCache = newCache;
 }
@@ -61,11 +64,12 @@ export function isDuplicateName(name, excludeId = null) {
   );
 }
 
-// Statusbepaling op basis van dagen en voorraad
+// Statusbepaling op basis van dagen, voorraad en drempelwaarden uit instellingen
 export function getStatus(daysLeft, stockKg) {
+  const settings = loadSettings();
   if (stockKg <= 0) return 'almostout';
   if (daysLeft === null || daysLeft === undefined) return 'unknown';
-  if (daysLeft <= 3) return 'almostout';
-  if (daysLeft <= 7) return 'low';
+  if (daysLeft <= settings.almostOutThreshold) return 'almostout';
+  if (daysLeft <= settings.lowThreshold) return 'low';
   return 'sufficient';
 }

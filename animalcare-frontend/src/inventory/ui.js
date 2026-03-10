@@ -1,6 +1,7 @@
 // ui.js
 import { feedItems, getDisplayAvg, getStatus, manualAvgUsage, avgUsageCache, movements } from './state.js';
 import { LARGE_DAYS } from './config.js';
+import { loadSettings } from './settings.js';
 
 // DOM-elementen (één keer opvragen)
 const tbody = document.getElementById('inventoryTableBody');
@@ -67,67 +68,67 @@ export function renderTable() {
     html += `<tr class="${rowClass}" data-id="${item.id}">
       <td class="fw-semibold text-nowrap">${item.name}</td>
 
-        <td class="text-center text-nowrap">
+      <td class="text-center text-nowrap">
         ${stockKg.toFixed(1)} kg
-        </td>
+      </td>
 
-        <td class="text-center text-nowrap">
+      <td class="text-center text-nowrap">
         ${avgCell}
-        </td>
+      </td>
 
-        <td class="text-center fw-semibold text-nowrap">
+      <td class="text-center fw-semibold text-nowrap">
         ${daysLeft}
-        </td>
+      </td>
 
-        <td class="text-center">
+      <td class="text-center">
         ${statusBadge}
-        </td>
+      </td>
 
-        <td class="text-end text-nowrap">
+      <td class="text-end text-nowrap">
 
         <!-- Desktop -->
         <div class="d-none d-md-inline-flex gap-1">
-            <button class="btn btn-outline-warning btn-sm consume-btn" data-id="${item.id}">
+          <button class="btn btn-outline-warning btn-sm consume-btn" data-id="${item.id}">
             <i class="bi bi-arrow-down-circle"></i>
-            </button>
+          </button>
 
-            <button class="btn btn-outline-secondary btn-sm edit-btn" data-id="${item.id}">
+          <button class="btn btn-outline-secondary btn-sm edit-btn" data-id="${item.id}">
             <i class="bi bi-pencil"></i>
-            </button>
+          </button>
 
-            <button class="btn btn-outline-info btn-sm history-btn" data-id="${item.id}">
+          <button class="btn btn-outline-info btn-sm history-btn" data-id="${item.id}">
             <i class="bi bi-clock"></i>
-            </button>
+          </button>
 
-            <button class="btn btn-outline-danger btn-sm delete-item-btn" data-id="${item.id}">
+          <button class="btn btn-outline-danger btn-sm delete-item-btn" data-id="${item.id}">
             <i class="bi bi-trash"></i>
-            </button>
+          </button>
         </div>
 
         <!-- Mobile -->
         <div class="d-md-none">
-            <div class="d-flex gap-1 mb-1">
+          <div class="d-flex gap-1 mb-1">
             <button class="btn btn-outline-warning btn-sm w-50 consume-btn" data-id="${item.id}">
-                <i class="bi bi-arrow-down-circle"></i>
+              <i class="bi bi-arrow-down-circle"></i>
             </button>
 
             <button class="btn btn-outline-secondary btn-sm w-50 edit-btn" data-id="${item.id}">
-                <i class="bi bi-pencil"></i>
+              <i class="bi bi-pencil"></i>
             </button>
-            </div>
+          </div>
 
-            <div class="d-flex gap-1">
+          <div class="d-flex gap-1">
             <button class="btn btn-outline-info btn-sm w-50 history-btn" data-id="${item.id}">
-                <i class="bi bi-clock"></i>
+              <i class="bi bi-clock"></i>
             </button>
 
             <button class="btn btn-outline-danger btn-sm w-50 delete-item-btn" data-id="${item.id}">
-                <i class="bi bi-trash"></i>
+              <i class="bi bi-trash"></i>
             </button>
-            </div>
+          </div>
         </div>
 
-        </td>
+      </td>
     </tr>`;
   });
   tbody.innerHTML = html;
@@ -163,33 +164,35 @@ function updateAlert() {
   alertMessageEl.textContent = `${lowAlmost} item(s) have low stock or are almost out.`;
 }
 
-// Gebruik van de laatste 30 dagen (widget)
+// Gebruik van de laatste X dagen (widget) – X uit instellingen
 export function renderUsage() {
+  const settings = loadSettings();
   if (Object.keys(avgUsageCache).length === 0) {
-    usageContainer.innerHTML = '<p class="text-muted">No consumption data available (no movements in the last 30 days).</p>';
+    usageContainer.innerHTML = '<p class="text-muted">No consumption data available (no movements in the last ' + settings.avgDays + ' days).</p>';
     return;
   }
   let html = '';
   feedItems.forEach(item => {
     const usageKg = avgUsageCache[item.id];
     if (!usageKg) return;
-    const total30d = (usageKg * 30).toFixed(1);
-    html += `<div class="mb-2"><div class="d-flex justify-content-between"><span class="fw-semibold">${item.name}</span><span class="text-muted">${total30d} kg total</span></div><div class="small text-muted">Average ${usageKg.toFixed(1)} kg/day</div></div>`;
+    const totalPeriod = (usageKg * settings.avgDays).toFixed(1);
+    html += `<div class="mb-2"><div class="d-flex justify-content-between"><span class="fw-semibold">${item.name}</span><span class="text-muted">${totalPeriod} kg total</span></div><div class="small text-muted">Average ${usageKg.toFixed(1)} kg/day</div></div>`;
   });
-  if (html === '') html = '<p class="text-muted">No consumption recorded in the last 30 days.</p>';
+  if (html === '') html = '<p class="text-muted">No consumption recorded in the last ' + settings.avgDays + ' days.</p>';
   usageContainer.innerHTML = html;
 }
 
-// Tabel met alle bewegingen (laatste 30 dagen) voor het modal
+// Tabel met alle bewegingen (laatste X dagen) voor het modal – X uit instellingen
 export function renderUsageHistory() {
+  const settings = loadSettings();
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const cutoff = new Date(now.getTime() - settings.avgDays * 24 * 60 * 60 * 1000);
   const recentMovements = movements
-    .filter(m => new Date(m.date) >= thirtyDaysAgo && m.deltaGrams < 0)
+    .filter(m => new Date(m.date) >= cutoff && m.deltaGrams < 0)
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   if (recentMovements.length === 0) {
-    usageHistoryTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No usage recorded in the last 30 days.</td></tr>';
+    usageHistoryTableBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No usage recorded in the last ' + settings.avgDays + ' days.</td></tr>';
     return;
   }
 
@@ -198,29 +201,29 @@ export function renderUsageHistory() {
     const item = feedItems.find(i => i.id === m.feedItemId);
     const itemName = item ? item.name : `Unknown (${m.feedItemId})`;
     html += `<tr>
-    <td class="text-nowrap">${new Date(m.date).toLocaleDateString()}</td>
+      <td class="text-nowrap">${new Date(m.date).toLocaleDateString()}</td>
 
-    <td>
+      <td>
         <div class="fw-semibold">${itemName}</div>
         <div class="d-md-none small text-muted mt-1">
-        Reason: ${m.reason || '-'}
+          Reason: ${m.reason || '-'}
         </div>
-    </td>
+      </td>
 
-    <td class="text-nowrap">${(-m.deltaGrams / 1000).toFixed(1)} kg</td>
+      <td class="text-nowrap">${(-m.deltaGrams / 1000).toFixed(1)} kg</td>
 
-    <td class="d-none d-md-table-cell">${m.reason || '-'}</td>
+      <td class="d-none d-md-table-cell">${m.reason || '-'}</td>
 
-    <td class="text-end text-nowrap">
+      <td class="text-end text-nowrap">
         <button class="btn btn-sm btn-outline-danger delete-movement-btn"
                 data-id="${m.id}" title="Delete movement">
-        <i class="bi bi-trash"></i>
+          <i class="bi bi-trash"></i>
         </button>
-    </td>
+      </td>
     </tr>`;
-    });
-    usageHistoryTableBody.innerHTML = html;
-    }
+  });
+  usageHistoryTableBody.innerHTML = html;
+}
 
 // Geschiedenis van één item tonen
 export function showHistory(itemId) {
@@ -253,4 +256,18 @@ export function showMovementsWarning(message) {
 
 export function hideMovementsWarning() {
   movementsErrorEl.classList.add('d-none');
+}
+
+// NIEUW: labels bijwerken met de actuele periode
+export function updatePeriodLabels() {
+  const settings = loadSettings();
+  const days = settings.avgDays;
+  const periodLabel = document.getElementById('usagePeriodLabel');
+  if (periodLabel) {
+    periodLabel.innerHTML = `<i class="bi bi-graph-down me-2"></i>Usage last ${days} days`;
+  }
+  const modalTitle = document.getElementById('usageHistoryModalTitle');
+  if (modalTitle) {
+    modalTitle.innerHTML = `<i class="bi bi-list-ul me-2"></i>Usage history (last ${days} days)`;
+  }
 }
