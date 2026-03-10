@@ -1,17 +1,23 @@
 <aside class="col-md-3 col-lg-2 bg-white border-end min-vh-100">
   <div class="py-3">
     <ul class="nav nav-pills flex-column gap-1">
-      <a class="nav-link" href="./index3.html">
-        <i class="bi bi-speedometer2 me-2"></i>Dashboard
-      </a>
+      <li class="nav-item">
+        <a class="nav-link" href="index3.html" onclick="goPage('index3.html'); return false;">
+          <i class="bi bi-speedometer2 me-2"></i>Dashboard
+        </a>
+      </li>
 
-      <a class="nav-link" href="./tasks.html">
-        <i class="bi bi-list-check me-2"></i>Tasks
-      </a>
+      <li class="nav-item">
+        <a class="nav-link" href="tasks.html" onclick="goPage('tasks.html'); return false;">
+          <i class="bi bi-list-check me-2"></i>Tasks
+        </a>
+      </li>
 
-      <a class="nav-link" href="./index.html">
-        <i class="bi bi-box-seam me-2"></i>Inventory
-      </a>
+      <li class="nav-item">
+        <a class="nav-link" href="index.html" onclick="goPage('index.html'); return false;">
+          <i class="bi bi-box-seam me-2"></i>Inventory
+        </a>
+      </li>
       <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-eye me-2"></i>Observations</a></li>
       <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-book me-2"></i>Manual</a></li>
       <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Fast actions</h6></li>
@@ -19,5 +25,15 @@
       <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#inventoryUpdateModal"><i class="bi bi-arrow-up-circle"></i> Voorraad updaten</a></li>
       <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#photoUploadModal"><i class="bi bi-camera"></i> Foto uploaden</a></li>
     </ul>
+
+    <script>
+  function goPage(page) {
+    const base = window.location.pathname.substring(
+      0,
+      window.location.pathname.lastIndexOf("/") + 1
+    );
+    window.location.href = base + page;
+  }
+</script>
   </div>
 </aside>

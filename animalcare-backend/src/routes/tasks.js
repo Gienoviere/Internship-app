@@ -108,4 +108,17 @@ router.delete("/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
   }
 });
 
+router.get('/debug-approval-logs', async (req, res) => {
+  try {
+    const logs = await prisma.approvalLog.findMany();
+    res.json({
+      count: logs.length,
+      logs
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Debug route failed' });
+  }
+});
+
 module.exports = router;
