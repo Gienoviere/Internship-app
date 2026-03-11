@@ -392,5 +392,20 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/src/js/include.js"></script>
   <script type="module" src="/src/inventory/main.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const currentPage = window.location.pathname.split('/').pop() || 'index3.html';
+      const links = document.querySelectorAll('#sidebarNav .nav-link');
+
+      links.forEach(link => {
+        const page = link.getAttribute('data-page');
+        if (page === currentPage) {
+          link.classList.add('active');
+        } else {
+          link.classList.remove('active');
+        }
+      });
+    });
+</script>
 </body>
 </html>

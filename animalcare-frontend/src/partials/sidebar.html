@@ -22,6 +22,16 @@
       <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#inventoryUpdateModal"><i class="bi bi-arrow-up-circle"></i> Update stock</a></li>
       <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#photoUploadModal"><i class="bi bi-camera"></i> Upload photo</a></li>
     </ul>
+
+    <script>
+  function goPage(page) {
+    const base = window.location.pathname.substring(
+      0,
+      window.location.pathname.lastIndexOf("/") + 1
+    );
+    window.location.href = base + page;
+  }
+</script>
   </div>
 </aside>
 
