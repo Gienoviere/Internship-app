@@ -336,50 +336,50 @@
   </div>
 
   <!-- SETTINGS MODAL -->
-<div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Inventory Settings</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <form id="settingsForm" class="needs-validation" novalidate>
-          <div class="mb-3">
-            <label for="settingsLowThreshold" class="form-label">Low stock threshold (days)</label>
-            <input type="number" class="form-control" id="settingsLowThreshold" min="1" step="1" required>
-            <div class="invalid-feedback" id="lowThresholdFeedback">
-              Please enter a valid positive number.
+  <div class="modal fade" id="settingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Inventory Settings</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="settingsForm" class="needs-validation" novalidate>
+            <div class="mb-3">
+              <label for="settingsLowThreshold" class="form-label">Low stock threshold (days)</label>
+              <input type="number" class="form-control" id="settingsLowThreshold" min="1" step="1" required>
+              <div class="invalid-feedback" id="lowThresholdFeedback">
+                Please enter a valid positive number.
+              </div>
+              <div class="form-text">Items with days left below this value are considered "Low".</div>
             </div>
-            <div class="form-text">Items with days left below this value are considered "Low".</div>
-          </div>
-          <div class="mb-3">
-            <label for="settingsAlmostOutThreshold" class="form-label">Almost out threshold (days)</label>
-            <input type="number" class="form-control" id="settingsAlmostOutThreshold" min="1" step="1" required>
-            <div class="invalid-feedback" id="almostOutThresholdFeedback">
-              Please enter a valid positive number.
+            <div class="mb-3">
+              <label for="settingsAlmostOutThreshold" class="form-label">Almost out threshold (days)</label>
+              <input type="number" class="form-control" id="settingsAlmostOutThreshold" min="1" step="1" required>
+              <div class="invalid-feedback" id="almostOutThresholdFeedback">
+                Please enter a valid positive number.
+              </div>
+              <div class="form-text">Items with days left below this value are considered "Almost out".</div>
             </div>
-            <div class="form-text">Items with days left below this value are considered "Almost out".</div>
-          </div>
-          <div class="mb-3">
-            <label for="settingsAvgDays" class="form-label">Average usage calculation period (days)</label>
-            <input type="number" class="form-control" id="settingsAvgDays" min="1" step="1" required>
-            <div class="invalid-feedback" id="avgDaysFeedback">
-              Please enter a valid positive number.
+            <div class="mb-3">
+              <label for="settingsAvgDays" class="form-label">Average usage calculation period (days)</label>
+              <input type="number" class="form-control" id="settingsAvgDays" min="1" step="1" required>
+              <div class="invalid-feedback" id="avgDaysFeedback">
+                Please enter a valid positive number.
+              </div>
+              <div class="form-text">Number of past days to consider for calculating average daily usage.</div>
             </div>
-            <div class="form-text">Number of past days to consider for calculating average daily usage.</div>
-          </div>
-          <!-- Optionele algemene foutmelding (kan blijven) -->
-          <div id="settingsFormError" class="alert alert-danger d-none" role="alert"></div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="saveSettingsBtn">Save settings</button>
+            <!-- Optionele algemene foutmelding (kan blijven) -->
+            <div id="settingsFormError" class="alert alert-danger d-none" role="alert"></div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveSettingsBtn">Save settings</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
   <!-- Simple toast message -->
   <div id="simpleMessage" class="position-fixed top-0 end-0 p-3" style="z-index: 9999; display:none;">

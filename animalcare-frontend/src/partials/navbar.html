@@ -1,19 +1,13 @@
-<!-- Top bar -->
-<nav class="navbar navbar-dark bg-dark sticky-top">
-  <div class="container-fluid">
-    <a class="navbar-brand fw-semibold d-flex align-items-center" href="#">
-      <span class="bg-primary rounded-circle d-inline-block me-2" style="width:.55rem;height:.55rem;"></span>
-      AnimalCare Log
-    </a>
-
-    <div class="d-flex align-items-center gap-2">
-      <span class="badge text-bg-secondary" id="userRoleBadge">Not logged in</span>
-      <button class="btn btn-outline-light btn-sm d-none" id="btnLogout3">Logout</button>
-
-      <!-- Mobile menu toggle -->
-      <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarOffcanvas" aria-controls="sidebarOffcanvas" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-      </button>
+<!-- Navigation bar (always visible) -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <span class="navbar-brand fw-semibold">
+        <span class="brand-dot"></span> Dierenzorg Log
+      </span>
+      <!-- Badge en logout knop visueel verborgen, maar blijven bestaan voor JS functionaliteit -->
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge text-bg-secondary" id="userRoleBadge3">Not logged in</span>
+        <button class="btn btn-outline-light btn-sm d-none" id="btnLogout3">Logout</button>
+      </div>
     </div>
-  </div>
-</nav>
+  </nav>
