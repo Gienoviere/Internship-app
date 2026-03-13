@@ -1,5 +1,6 @@
 import { isoToday, api } from "./api.js";
 import { state } from "./state.js";
+import { wireQuickLogShared } from "./quick-log.js";
 
 function $(id) {
   return document.getElementById(id);
@@ -352,4 +353,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     setAlert("danger", e.message || "Failed to save log.");
   }
   });
+
+  wireQuickLogShared(refreshTasksPage);
+
 });

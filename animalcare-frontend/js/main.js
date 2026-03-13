@@ -5,7 +5,6 @@ import { wireAuthUI, loadMe, setOnLoginSuccess } from "./auth.js";
 import { loadTasksToday } from "./caretaker.js";
 import { loadAdminPanels, wireAdminActions } from "./admin.js";
 import { loadSupervisorQueue } from "./supervisor.js";
-import { loadObservations, createObservation } from "./observations.js";
 import {
   getRoleView,
   updateRoleSpecificUI,
@@ -14,6 +13,8 @@ import {
   setAlert,
   applyRoleVisibility,
 } from "./ui.js";
+import { wireQuickLogShared } from "./quick-log.js";
+
 
 export async function refreshAll() {
   const date = $("globalDate3")?.value || isoToday();
@@ -44,7 +45,7 @@ export async function refreshAll() {
   // Caretaker/common panels
   await loadTasksToday(date);
   //await loadObservations(date);
-  await loadQuickLogTasks(date);
+  //await loadQuickLogTasks(date);
   await loadDashboardSummary(date);
 
   // Titles + role/view-specific UI
@@ -80,6 +81,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   wireAuthUI();
   wireAdminActions();
   wireDashboardCsv();
+  wireQuickLogShared(refreshAll);
 
   on("btnRefresh3", "click", async () => {
     try {
@@ -123,14 +125,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   //   }
   // });
 
-  document.getElementById("btnQuickLogSubmit")?.addEventListener("click", async () => {
-    try {
-      await saveQuickLog();
-    } catch (e) {
-      setAlert("danger", e.message || "Quick log failed.");
-    }
-  });
-
   // Initial auth check + app load
   try {
     await loadMe();
@@ -151,71 +145,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 });
-
-// Quick log code
-async function saveQuickLog() {
-  const date = $("globalDate3")?.value || isoToday();
-  const taskId = Number(document.getElementById("quickLogTask3")?.value);
-  const qtyRaw = document.getElementById("quickLogQty3")?.value?.trim() || "";
-  const notes = document.getElementById("quickLogNotes3")?.value?.trim() || "";
-  const completed = Boolean(document.getElementById("quickLogCompleted3")?.checked);
-
-  if (!taskId) {
-    setAlert("danger", "Please select a task.");
-    return;
-  }
-
-  let quantityGrams = null;
-  if (qtyRaw !== "") {
-    quantityGrams = Number(qtyRaw);
-    if (!Number.isFinite(quantityGrams) || quantityGrams < 0) {
-      setAlert("danger", "Quantity must be a valid positive number.");
-      return;
-    }
-  }
-
-  await api("/daily-logs", {
-    method: "POST",
-    json: {
-      date,
-      taskId,
-      completed,
-      quantityGrams,
-      notes
-    }
-  });
-
-  const modalEl = document.getElementById("quickLogModal");
-  if (modalEl && window.bootstrap) {
-    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-  }
-
-  document.getElementById("quickLogTask3").value = "";
-  document.getElementById("quickLogQty3").value = "";
-  document.getElementById("quickLogNotes3").value = "";
-  document.getElementById("quickLogCompleted3").checked = true;
-
-  setAlert("success", "Quick log saved.");
-  await refreshAll();
-}
-
-// quick log dropdown code
-async function loadQuickLogTasks(date) {
-  const select = document.getElementById("quickLogTask3");
-  if (!select) return;
-
-  const data = await api(`/tasks/today?date=${date}`);
-  const tasks = data.tasks || [];
-
-  select.innerHTML = `
-    <option value="">Select a task</option>
-    ${tasks.map(t => `
-      <option value="${t.taskId}">
-        ${t.taskName}${t.logged ? " (already logged)" : ""}
-      </option>
-    `).join("")}
-  `;
-}
 
 // Summary of the dashboard
 function statusBadge(status) {
@@ -304,13 +233,6 @@ function wireDashboardCsv() {
   $("btnDownloadCsv3")?.addEventListener("click", clickHandler);
   $("btnDownloadCsv")?.addEventListener("click", clickHandler);
 }
-
-document.getElementById("btnSendSummary")?.addEventListener("click", () => {
-  const modalEl = document.getElementById("sendSummaryModal");
-  if (!modalEl || !window.bootstrap) return;
-  bootstrap.Modal.getOrCreateInstance(modalEl).show();
-});
-
 
 //code for the email
 function openSendSummaryModal() {

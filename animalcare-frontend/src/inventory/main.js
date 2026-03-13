@@ -15,6 +15,53 @@ import {
   showMovementsWarning, hideMovementsWarning, updatePeriodLabels   // <-- nieuw
 } from './ui.js';
 import { loadSettings, saveSettings } from './settings.js';
+import { wireQuickLogShared } from "/js/quick-log.js";
+
+// code for user badge, made by gienoviere, don't touch it!!
+async function syncNavbarUser() {
+  try {
+    const token = getToken();
+    const badge = document.getElementById("userRoleBadge3");
+    const logoutBtn = document.getElementById("btnLogout3");
+
+    if (!token) {
+      if (badge) badge.textContent = "Not logged in";
+      if (logoutBtn) logoutBtn.classList.add("d-none");
+      return;
+    }
+
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to load current user");
+    }
+
+    const me = await res.json();
+    const currentUser = me.user || me;
+
+    if (badge) {
+      badge.textContent = currentUser?.role || "Unknown role";
+    }
+
+    if (logoutBtn) {
+      logoutBtn.classList.remove("d-none");
+      logoutBtn.onclick = () => {
+        localStorage.removeItem("token");
+        window.location.reload();
+      };
+    }
+  } catch (err) {
+    console.error("Navbar auth sync failed:", err);
+    const badge = document.getElementById("userRoleBadge3");
+    const logoutBtn = document.getElementById("btnLogout3");
+    if (badge) badge.textContent = "Not logged in";
+    if (logoutBtn) logoutBtn.classList.add("d-none");
+  }
+}
 
 // Globale variabelen voor modals
 let currentEditId = null;
@@ -34,6 +81,12 @@ async function loadFeedItems() {
     showBackendError(err.message);
   }
 }
+
+// quick logs, made bij gienoviere
+wireQuickLogShared(async () => {
+  window.location.reload();
+});
+
 
 async function loadMovements() {
   try {
@@ -114,6 +167,11 @@ async function deleteMovement(id) {
 
 // ========== EVENT LISTENERS ==========
 document.addEventListener('DOMContentLoaded', () => {
+  //User badge check, made by gienoviere, leave it!!  
+  setTimeout(() => {
+    syncNavbarUser();
+  }, 300);
+
   // Modals tonen bij klikken op knoppen (event delegation)
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
