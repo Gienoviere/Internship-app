@@ -15,6 +15,7 @@ const observationsRoutes = require("./routes/observations");
 const adminCriticalRoutes = require("./routes/adminCritical");
 const adminEmailRoutes = require("./routes/adminEmail");
 const adminExportRoutes = require("./routes/adminExport");
+const dashboardRoutes = require("./routes/dashboard");
 
 
 const app = express();
@@ -42,6 +43,7 @@ app.use("/observations", observationsRoutes);
 app.use("/admin", adminCriticalRoutes);
 app.use("/admin", adminEmailRoutes);
 app.use("/admin", adminExportRoutes);
+app.use("/dashboard", dashboardRoutes);
 
 // Start server LAST
 const PORT = process.env.PORT || 3001;

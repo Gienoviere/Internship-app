@@ -26,7 +26,7 @@
         <div class="py-3">
             <ul class="nav nav-pills flex-column gap-1" id="sidebarNav">
             <li class="nav-item">
-                <a class="nav-link" href="index3.html" data-page="index3.html">
+                <a class="nav-link" href="/index3.html" data-page="index3.html">
                 <i class="bi bi-speedometer2 me-2"></i>Dashboard
                 </a>
             </li>
@@ -38,10 +38,18 @@
             </li>
 
             <li class="nav-item">
-                <a class="nav-link" href="index.html" data-page="index.html">
+                <a class="nav-link" href="/src/inventory/index.html" data-page="index.html">
                 <i class="bi bi-box-seam me-2"></i>Inventory
                 </a>
             </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="/Observations/Observations.html" data-page="observations.html">
+                <i class="bi bi-journal-text me-2"></i>Observations
+              </a>
+            </li>
+
+            <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Snel acties</h6></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Snelle log</a></li>
             </ul>
         </div>
         </aside>
@@ -100,6 +108,90 @@
       </main>
     </div>
   </div>
+  
+  <div class="modal fade" id="logModal3" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Task log</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="form-label">Task</label>
+          <input type="text" class="form-control" id="logTaskName3" readonly>
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Quantity (grams)</label>
+          <input type="number" min="0" class="form-control" id="logQty3" placeholder="Enter grams">
+        </div>
+
+        <div class="mb-2">
+          <label class="form-label">Notes</label>
+          <textarea class="form-control" id="logNotes3" rows="3" placeholder="Add notes"></textarea>
+        </div>
+
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="logCompleted3">
+          <label class="form-check-label" for="logCompleted3">
+            Mark as completed
+          </label>
+        </div>
+
+        <input type="hidden" id="logTaskId3">
+        <input type="hidden" id="logId3">
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btnSaveLog3">Save log</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="logModal3" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Task log</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="logTaskName3" class="form-label">Task</label>
+          <input type="text" class="form-control" id="logTaskName3" readonly>
+        </div>
+
+        <div class="mb-3">
+          <label for="logQty3" class="form-label">Quantity (grams)</label>
+          <input type="number" class="form-control" id="logQty3" min="0" placeholder="Enter quantity">
+        </div>
+
+        <div class="mb-3">
+          <label for="logNotes3" class="form-label">Notes</label>
+          <textarea class="form-control" id="logNotes3" rows="3" placeholder="Add notes"></textarea>
+        </div>
+
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="logCompleted3">
+          <label class="form-check-label" for="logCompleted3">
+            Mark as completed
+          </label>
+        </div>
+
+        <input type="hidden" id="logTaskId3">
+        <input type="hidden" id="logId3">
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btnSaveLog3">Save log</button>
+      </div>
+    </div>
+  </div>
+</div>
 
   <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -116,7 +208,7 @@
         });
         });
     </script>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script type="module" src="/js/tasks-page.js"></script>
 </body>
 </html>

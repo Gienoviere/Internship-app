@@ -58,7 +58,7 @@ export async function loadObservations(date) {
       for (const f of files) fd.append("photos", f);
 
       try {
-        await fetch(`http://localhost:3001/observations/${id}/photos`, {
+        await fetch(`/observations/${id}/photos`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,

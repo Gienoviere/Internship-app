@@ -76,52 +76,130 @@ async function loadTasks(date) {
       ? "text-bg-warning"
       : "text-bg-secondary";
 
-    const disabled = t.logged && t.completed;
-
     const row = document.createElement("tr");
+    row.style.cursor = "pointer";
+    row.addEventListener("click", () => {
+    const button = row.querySelector("[data-open-log]");
+    if (button) button.click();
+    });
+
     row.innerHTML = `
       <td><span class="fw-semibold">${t.taskName}</span></td>
       <td><span class="badge bg-light text-dark border">${t.category || ""}</span></td>
-      <td><span class="badge ${badgeClass}">${status}</span></td>
       <td>
-        <div class="d-flex gap-2">
-          <input class="form-control form-control-sm" style="max-width:120px"
-            id="qty3_${t.taskId}" placeholder="gram" value="${t.quantityGrams ?? ""}">
-          <button class="btn btn-sm btn-${disabled ? "secondary" : "primary"}"
-            ${disabled ? "disabled" : ""}
-            data-log="${t.taskId}">
-            Log
-          </button>
-        </div>
+        <button
+          type="button"
+          class="btn btn-sm ${t.logged ? "btn-outline-dark" : "btn-outline-primary"}"
+          data-open-log='${JSON.stringify({
+            taskId: t.taskId,
+            taskName: t.taskName,
+            logId: t.logId,
+            quantityGrams: t.quantityGrams,
+            notes: t.notes,
+            completed: t.completed,
+            logged: t.logged
+          }).replace(/'/g, "&apos;")}'>
+          <span class="badge ${badgeClass}">${status}</span>
+        </button>
+      </td>
+      <td>
+        <button
+          type="button"
+          class="btn btn-sm btn-primary"
+          data-open-log='${JSON.stringify({
+            taskId: t.taskId,
+            taskName: t.taskName,
+            logId: t.logId,
+            quantityGrams: t.quantityGrams,
+            notes: t.notes,
+            completed: t.completed,
+            logged: t.logged
+          }).replace(/'/g, "&apos;")}'>
+          ${t.logged ? "Edit log" : "Add log"}
+        </button>
       </td>
     `;
     tbody.appendChild(row);
   });
 
-  tbody.querySelectorAll("button[data-log]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const taskId = Number(btn.dataset.log);
-      const qtyVal = $(`qty3_${taskId}`)?.value;
-      const qty = qtyVal ? Number(qtyVal) : null;
+  tbody.querySelectorAll("[data-open-log]").forEach((btn) => {
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
 
-      try {
-        await api("/daily-logs", {
-          method: "POST",
-          json: {
-            date,
-            taskId,
-            completed: true,
-            quantityGrams: Number.isFinite(qty) ? qty : null,
-            notes: ""
-          },
-        });
-        setAlert("success", "Task logged.");
-        await refreshTasksPage();
-      } catch (e) {
-        setAlert("danger", e.message);
+    const raw = btn.getAttribute("data-open-log");
+    const item = JSON.parse(raw);
+
+    if ($("logTaskName3")) $("logTaskName3").value = item.taskName || "";
+    if ($("logTaskId3")) $("logTaskId3").value = item.taskId || "";
+    if ($("logId3")) $("logId3").value = item.logId || "";
+    if ($("logQty3")) $("logQty3").value = item.quantityGrams ?? "";
+    if ($("logNotes3")) $("logNotes3").value = item.notes ?? "";
+    if ($("logCompleted3")) $("logCompleted3").checked = item.logged ? Boolean(item.completed) : true;
+
+    const modalEl = $("logModal3");
+    if (!modalEl || !window.bootstrap) {
+      setAlert("danger", "Log modal is not available.");
+      return;
+    }
+
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+    modal.show();
+  });
+});
+}
+
+async function saveLogFromModal() {
+  const date = $("globalDate3")?.value || isoToday();
+  const taskId = Number($("logTaskId3")?.value);
+  const logId = $("logId3")?.value ? Number($("logId3").value) : null;
+  const qtyRaw = $("logQty3")?.value?.trim() || "";
+  const notes = $("logNotes3")?.value?.trim() || "";
+  const completed = Boolean($("logCompleted3")?.checked);
+
+  if (!taskId) {
+    setAlert("danger", "Task ID is missing.");
+    return;
+  }
+
+  let quantityGrams = null;
+  if (qtyRaw !== "") {
+    quantityGrams = Number(qtyRaw);
+    if (!Number.isFinite(quantityGrams) || quantityGrams < 0) {
+      setAlert("danger", "Quantity must be a valid positive number.");
+      return;
+    }
+  }
+
+  if (logId) {
+    await api(`/daily-logs/${logId}`, {
+      method: "PATCH",
+      json: {
+        completed,
+        quantityGrams,
+        notes
       }
     });
-  });
+    setAlert("success", "Log updated.");
+  } else {
+    await api("/daily-logs", {
+      method: "POST",
+      json: {
+        date,
+        taskId,
+        completed,
+        quantityGrams,
+        notes
+      }
+    });
+    setAlert("success", "Log created.");
+  }
+
+  const modalEl = $("logModal3");
+  if (modalEl && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+  }
+
+  await refreshTasksPage();
 }
 
 async function loadSupervisorQueue(date) {
@@ -266,4 +344,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     setAlert("danger", e.message);
   }
+
+  $("btnSaveLog3")?.addEventListener("click", async () => {
+  try {
+    await saveLogFromModal();
+  } catch (e) {
+    setAlert("danger", e.message || "Failed to save log.");
+  }
+  });
 });

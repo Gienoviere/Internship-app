@@ -43,7 +43,9 @@ export async function refreshAll() {
 
   // Caretaker/common panels
   await loadTasksToday(date);
-  await loadObservations(date);
+  //await loadObservations(date);
+  await loadQuickLogTasks(date);
+  await loadDashboardSummary(date);
 
   // Titles + role/view-specific UI
   const view = getRoleView();
@@ -77,6 +79,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // Wire UI
   wireAuthUI();
   wireAdminActions();
+  wireDashboardCsv();
 
   on("btnRefresh3", "click", async () => {
     try {
@@ -109,14 +112,22 @@ document.addEventListener("DOMContentLoaded", async () => {
     new bootstrap.Modal(el).show();
   });
 
-  on("btnObsCreate3", "click", async () => {
+  // on("btnObsCreate3", "click", async () => {
+  //   try {
+  //     const date = $("globalDate3")?.value || isoToday();
+  //     await createObservation(date);
+  //     await loadObservations(date);
+  //     setAlert("success", "Observation added.");
+  //   } catch (e) {
+  //     setAlert("danger", e.message || "Observation failed");
+  //   }
+  // });
+
+  document.getElementById("btnQuickLogSubmit")?.addEventListener("click", async () => {
     try {
-      const date = $("globalDate3")?.value || isoToday();
-      await createObservation(date);
-      await loadObservations(date);
-      setAlert("success", "Observation added.");
+      await saveQuickLog();
     } catch (e) {
-      setAlert("danger", e.message || "Observation failed");
+      setAlert("danger", e.message || "Quick log failed.");
     }
   });
 
@@ -126,4 +137,224 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     console.error("Initial loadMe failed:", e);
   }
+
+  //Email
+  document.getElementById("btnSendSummary")?.addEventListener("click", () => {
+  openSendSummaryModal();
+  });
+
+  document.getElementById("btnSendSummarySubmit")?.addEventListener("click", async () => {
+    try {
+      await sendSummaryEmail();
+    } catch (e) {
+      setAlert("danger", e.message || "Failed to send summary email.");
+    }
+  });
 });
+
+// Quick log code
+async function saveQuickLog() {
+  const date = $("globalDate3")?.value || isoToday();
+  const taskId = Number(document.getElementById("quickLogTask3")?.value);
+  const qtyRaw = document.getElementById("quickLogQty3")?.value?.trim() || "";
+  const notes = document.getElementById("quickLogNotes3")?.value?.trim() || "";
+  const completed = Boolean(document.getElementById("quickLogCompleted3")?.checked);
+
+  if (!taskId) {
+    setAlert("danger", "Please select a task.");
+    return;
+  }
+
+  let quantityGrams = null;
+  if (qtyRaw !== "") {
+    quantityGrams = Number(qtyRaw);
+    if (!Number.isFinite(quantityGrams) || quantityGrams < 0) {
+      setAlert("danger", "Quantity must be a valid positive number.");
+      return;
+    }
+  }
+
+  await api("/daily-logs", {
+    method: "POST",
+    json: {
+      date,
+      taskId,
+      completed,
+      quantityGrams,
+      notes
+    }
+  });
+
+  const modalEl = document.getElementById("quickLogModal");
+  if (modalEl && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+  }
+
+  document.getElementById("quickLogTask3").value = "";
+  document.getElementById("quickLogQty3").value = "";
+  document.getElementById("quickLogNotes3").value = "";
+  document.getElementById("quickLogCompleted3").checked = true;
+
+  setAlert("success", "Quick log saved.");
+  await refreshAll();
+}
+
+// quick log dropdown code
+async function loadQuickLogTasks(date) {
+  const select = document.getElementById("quickLogTask3");
+  if (!select) return;
+
+  const data = await api(`/tasks/today?date=${date}`);
+  const tasks = data.tasks || [];
+
+  select.innerHTML = `
+    <option value="">Select a task</option>
+    ${tasks.map(t => `
+      <option value="${t.taskId}">
+        ${t.taskName}${t.logged ? " (already logged)" : ""}
+      </option>
+    `).join("")}
+  `;
+}
+
+// Summary of the dashboard
+function statusBadge(status) {
+  if (status === "Completed") return `<span class="badge bg-success">Completed</span>`;
+  if (status === "Logged") return `<span class="badge bg-warning text-dark">Logged</span>`;
+  return `<span class="badge bg-danger">Not done</span>`;
+}
+
+async function loadDashboardSummary(date) {
+  const data = await api(`/dashboard/summary?date=${date}`);
+
+  const totals = data.totals || {};
+  const overview = data.overview || [];
+  const recentActivity = data.recentActivity || [];
+
+  // top KPIs
+  if ($("kpiCompleted3")) $("kpiCompleted3").textContent = `${totals.completionPercent ?? 0}%`;
+  if ($("kpiTasks3")) $("kpiTasks3").textContent = String(totals.totalTasks ?? 0);
+  if ($("kpiMissed3")) $("kpiMissed3").textContent = String((totals.totalTasks ?? 0) - (totals.completedCount ?? 0));
+  if ($("kpiAlerts3")) $("kpiAlerts3").textContent = String(totals.warnings ?? 0);
+  if ($("supPendingCount3")) $("supPendingCount3").textContent = String(totals.pendingApprovals ?? 0);
+
+  // admin cards
+  if ($("adminActiveUsers")) $("adminActiveUsers").textContent = String(totals.activeUsers ?? 0);
+  if ($("adminTasksCompleted")) $("adminTasksCompleted").textContent = `${totals.completionPercent ?? 0}%`;
+  if ($("adminWarnings")) $("adminWarnings").textContent = String(totals.warnings ?? 0);
+
+  // stats bars
+  if ($("statTaskCompletionBar3")) {
+    $("statTaskCompletionBar3").style.width = `${totals.completionPercent ?? 0}%`;
+    $("statTaskCompletionBar3").textContent = `${totals.completionPercent ?? 0}%`;
+  }
+
+  if ($("statInventoryWarningsBar3")) {
+    const warningCount = totals.warnings ?? 0;
+    const warningWidth = Math.min(warningCount * 10, 100);
+    $("statInventoryWarningsBar3").style.width = `${warningWidth}%`;
+    $("statInventoryWarningsBar3").textContent = `${warningCount} item${warningCount === 1 ? "" : "s"}`;
+  }
+
+  // overview table
+  if ($("overviewTable3")) {
+    $("overviewTable3").innerHTML = overview.map((row) => `
+      <tr>
+        <td>${row.taskName}</td>
+        <td>${statusBadge(row.status)}</td>
+        <td>${row.loggedBy?.length ? row.loggedBy.join(", ") : "—"}</td>
+      </tr>
+    `).join("");
+  }
+
+  // admin overview table
+  if ($("adminOverviewTable")) {
+    $("adminOverviewTable").innerHTML = overview.map((row) => `
+      <tr>
+        <td>${row.taskName}</td>
+        <td>${row.loggedBy?.length ? row.loggedBy.join(", ") : "—"}</td>
+        <td>${statusBadge(row.status)}</td>
+        <td><button class="btn btn-sm btn-outline-secondary" disabled>View</button></td>
+      </tr>
+    `).join("");
+  }
+
+  // recent activity
+  if ($("recentActivityTable3")) {
+    $("recentActivityTable3").innerHTML = recentActivity.length
+      ? recentActivity.map((item) => `
+          <tr>
+            <td>${item.time}</td>
+            <td><span class="badge bg-success">${item.action}</span></td>
+            <td>${item.by}</td>
+            <td>${item.details}</td>
+          </tr>
+        `).join("")
+      : `<tr><td colspan="4" class="text-muted">No activity for this date.</td></tr>`;
+  }
+}
+
+//CsV button code
+function wireDashboardCsv() {
+  const clickHandler = () => {
+    const date = $("globalDate3")?.value || isoToday();
+    window.location.href = `/dashboard/export.csv?date=${encodeURIComponent(date)}`;
+  };
+
+  $("btnDownloadCsv3")?.addEventListener("click", clickHandler);
+  $("btnDownloadCsv")?.addEventListener("click", clickHandler);
+}
+
+document.getElementById("btnSendSummary")?.addEventListener("click", () => {
+  const modalEl = document.getElementById("sendSummaryModal");
+  if (!modalEl || !window.bootstrap) return;
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
+});
+
+
+//code for the email
+function openSendSummaryModal() {
+  const modalEl = document.getElementById("sendSummaryModal");
+  if (!modalEl || !window.bootstrap) return;
+  bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
+
+async function sendSummaryEmail() {
+  const recipientsRaw = document.getElementById("summaryRecipients3")?.value?.trim() || "";
+  const period = document.getElementById("summaryPeriod3")?.value || "selected";
+  const autoSend = Boolean(document.getElementById("summaryAutoSend3")?.checked);
+
+  if (!recipientsRaw) {
+    setAlert("danger", "Please enter at least one recipient.");
+    return;
+  }
+
+  const recipients = recipientsRaw
+    .split(",")
+    .map(v => v.trim())
+    .filter(Boolean);
+
+  if (!recipients.length) {
+    setAlert("danger", "Please enter valid recipient emails.");
+    return;
+  }
+
+  const selectedDate = $("globalDate3")?.value || isoToday();
+  const date = period === "today" ? isoToday() : selectedDate;
+
+  await api("/dashboard/send-summary", {
+    method: "POST",
+    json: {
+      date,
+      recipients,
+      autoSend
+    }
+  });
+
+  const modalEl = document.getElementById("sendSummaryModal");
+  if (modalEl && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+  }
+
+  setAlert("success", "Summary email sent.");
+}
