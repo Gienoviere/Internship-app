@@ -184,13 +184,12 @@ function wireUserRowActions() {
   });
 }
 
+// assign task in users.html
 async function loadAllTasksForAssignment() {
   const container = $("allTasksList");
   if (!container) return;
 
-  const today = new Date().toISOString().slice(0, 10);
-  const data = await api(`/tasks/today?date=${today}`);
-  const tasks = data.tasks || [];
+  const tasks = await api("/tasks");
 
   container.innerHTML = tasks.map(t => `
     <button
@@ -259,6 +258,34 @@ async function loadAssignedTasksForUser(userId) {
   });
 }
 
+async function syncNavbarUser() {
+  try {
+    const me = await api("/auth/me");
+    const currentUser = me.user || me;
+
+    const badge = document.getElementById("userRoleBadge3");
+    const logoutBtn = document.getElementById("btnLogout3");
+
+    if (badge) {
+      badge.textContent = currentUser?.role || "Unknown role";
+    }
+
+    if (logoutBtn) {
+      logoutBtn.classList.remove("d-none");
+      logoutBtn.onclick = () => {
+        localStorage.removeItem("token");
+        window.location.href = "/index3.html";
+      };
+    }
+  } catch (e) {
+    const badge = document.getElementById("userRoleBadge3");
+    const logoutBtn = document.getElementById("btnLogout3");
+
+    if (badge) badge.textContent = "Not logged in";
+    if (logoutBtn) logoutBtn.classList.add("d-none");
+  }
+}
+
 document.addEventListener("DOMContentLoaded", async () => {
   $("btnCreateUser")?.addEventListener("click", async () => {
     try {
@@ -275,4 +302,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     setAlert("danger", e.message || "Failed to load users.");
   }
+
+  await syncNavbarUser();
+
+  document.getElementById("btnCreateUser")?.addEventListener("click", async () => {
+    try {
+      await createUser();
+    } catch (e) {
+      alert(e.message || "Failed to create user.");
+    }
+  });
+
+  await loadUsers();
 });

@@ -8,9 +8,11 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
   USER
+  ADMIN
   SUPERVISOR
+  FARMER
+  VOLUNTEER
 }
 
 enum ApprovalStatus {
@@ -176,13 +178,14 @@ model ObservationPhoto {
 
 model TaskAssignment {
   id         Int      @id @default(autoincrement())
-  taskId      Int
-  userId      Int
-  active      Boolean  @default(true)
-  assignedAt  DateTime @default(now())
+  taskId     Int
+  userId     Int
+  active     Boolean  @default(true)
+  assignedAt DateTime @default(now())
 
   task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, userId])
 }
+
