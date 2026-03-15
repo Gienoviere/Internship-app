@@ -16,6 +16,9 @@ const adminCriticalRoutes = require("./routes/adminCritical");
 const adminEmailRoutes = require("./routes/adminEmail");
 const adminExportRoutes = require("./routes/adminExport");
 const dashboardRoutes = require("./routes/dashboard");
+const userRoutes = require("./routes/users")
+const userRoutes = require("./routes/users");
+const taskAssignmentRoutes = require("./routes/taskAssignments");
 
 
 const app = express();
@@ -44,6 +47,9 @@ app.use("/admin", adminCriticalRoutes);
 app.use("/admin", adminEmailRoutes);
 app.use("/admin", adminExportRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/api", userRoutes)
+app.use("/users", userRoutes);
+app.use("/task-assignments", taskAssignmentRoutes);
 
 // Start server LAST
 const PORT = process.env.PORT || 3001;

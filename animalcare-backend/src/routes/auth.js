@@ -2,39 +2,65 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const prisma = require("../prisma");
+const requireAuth = require("../middleware/requireAuth");
+const requireRole = require("../middleware/requireRole");
 
 const router = express.Router();
 
-// POST /auth/register  (for now: open; later make admin-only)
-router.post("/register", async (req, res) => {
-  try {
-    const { name, email, password, role } = req.body;
+// POST /auth/register  (ADMIN / SUPERVISOR only)
+router.post(
+  "/register",
+  requireAuth,
+  requireRole(["ADMIN", "SUPERVISOR"]),
+  async (req, res) => {
+    try {
+      const { name, email, password, role } = req.body;
 
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: "name, email, password are required" });
+      if (!name || !email || !password) {
+        return res.status(400).json({ error: "name, email, password are required" });
+      }
+
+      const allowedRoles =
+        req.user.role === "ADMIN"
+          ? ["ADMIN", "SUPERVISOR", "FARMER", "VOLUNTEER"]
+          : ["FARMER", "VOLUNTEER"];
+
+      const finalRole = role || "VOLUNTEER";
+
+      if (!allowedRoles.includes(finalRole)) {
+        return res.status(403).json({ error: "You cannot create this role" });
+      }
+
+      const existing = await prisma.user.findUnique({ where: { email } });
+      if (existing) return res.status(409).json({ error: "Email already in use" });
+
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      const user = await prisma.user.create({
+        data: {
+          name,
+          email,
+          passwordHash,
+          role: finalRole,
+          active: true,
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          active: true,
+          createdAt: true,
+        },
+      });
+
+      res.status(201).json(user);
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
     }
-
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) return res.status(409).json({ error: "Email already in use" });
-
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    const user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        passwordHash,
-        role: role || "USER",
-      },
-      select: { id: true, name: true, email: true, role: true, active: true, createdAt: true },
-    });
-
-    res.status(201).json(user);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
   }
-});
+);
 
 // POST /auth/login
 router.post("/login", async (req, res) => {
@@ -64,10 +90,9 @@ router.post("/login", async (req, res) => {
   }
 });
 
-module.exports = router;
-
-const requireAuth = require("../middleware/requireAuth");
-
 router.get("/me", requireAuth, async (req, res) => {
   res.json({ user: req.user });
 });
+
+module.exports = router;
+

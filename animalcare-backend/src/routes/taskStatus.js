@@ -23,15 +23,39 @@ router.get("/today", requireAuth, async (req, res) => {
     }
 
     const day = toDateOnlyUTC(date);
+    const nextDay = new Date(day);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-    const tasks = await prisma.task.findMany({
-      where: { active: true, isDaily: true },
-      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-    });
+    const isManager = ["ADMIN", "SUPERVISOR"].includes(req.user.role);
+
+    const tasks = isManager
+      ? await prisma.task.findMany({
+          where: { active: true, isDaily: true },
+          orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        })
+      : await prisma.task.findMany({
+          where: {
+            active: true,
+            isDaily: true,
+            assignments: {
+              some: {
+                userId: req.user.userId,
+                active: true,
+              },
+            },
+          },
+          orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        });
 
     const myLogs = await prisma.dailyLog.findMany({
-      where: { date: day, userId: req.user.userId },
-      select: { id: true, taskId: true, completed: true, quantityGrams: true, notes: true },
+      where: {
+        userId: req.user.userId,
+        date: {
+          gte: day,
+          lt: nextDay,
+        },
+      },
+      orderBy: [{ id: "desc" }],
     });
 
     const byTaskId = new Map(myLogs.map((l) => [l.taskId, l]));
