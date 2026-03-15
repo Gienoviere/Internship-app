@@ -1,5 +1,20 @@
 import { api } from "./api.js";
 
+let allUsers = [];
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function setAlert(type, msg) {
+  const box = $("usersAlert");
+  if (!box) return;
+  box.className = `alert alert-${type}`;
+  box.textContent = msg;
+  box.classList.remove("d-none");
+  setTimeout(() => box.classList.add("d-none"), 4000);
+}
+
 function roleOptions(currentRole) {
   const roles = ["VOLUNTEER", "FARMER", "SUPERVISOR", "ADMIN"];
   return roles.map(r => `
@@ -7,16 +22,24 @@ function roleOptions(currentRole) {
   `).join("");
 }
 
-async function loadUsers() {
-  const users = await api("/users");
-  const tbody = document.getElementById("usersTable");
+function updateStats(users) {
+  $("usersTotalCount").textContent = String(users.length);
+  $("usersActiveCount").textContent = String(users.filter(u => u.active).length);
+  $("usersFarmerCount").textContent = String(users.filter(u => u.role === "FARMER").length);
+  $("usersVolunteerCount").textContent = String(users.filter(u => u.role === "VOLUNTEER").length);
+}
+
+function renderUsers(users) {
+  const tbody = $("usersTable");
   if (!tbody) return;
 
   tbody.innerHTML = users.map(u => `
     <tr>
-      <td>${u.name}</td>
+      <td>
+        <div class="fw-semibold">${u.name}</div>
+      </td>
       <td>${u.email}</td>
-      <td style="max-width:180px;">
+      <td>
         <select class="form-select form-select-sm" data-role-user-id="${u.id}">
           ${roleOptions(u.role)}
         </select>
@@ -26,29 +49,80 @@ async function loadUsers() {
           ${u.active ? "Active" : "Inactive"}
         </span>
       </td>
-      <td class="d-flex gap-2">
-        <button
-          class="btn btn-sm btn-outline-primary"
-          data-save-role="${u.id}">
-          Save role
-        </button>
+      <td>
+        <div class="d-flex gap-2 flex-wrap">
+          <button class="btn btn-sm btn-outline-primary" data-save-role="${u.id}">
+            Save role
+          </button>
 
-        <button
-          class="btn btn-sm ${u.active ? "btn-outline-danger" : "btn-outline-success"}"
-          data-toggle-active="${u.id}"
-          data-next-active="${u.active ? "false" : "true"}">
-          ${u.active ? "Deactivate" : "Reactivate"}
-        </button>
+          <button
+            class="btn btn-sm ${u.active ? "btn-outline-danger" : "btn-outline-success"}"
+            data-toggle-active="${u.id}"
+            data-next-active="${u.active ? "false" : "true"}">
+            ${u.active ? "Deactivate" : "Reactivate"}
+          </button>
 
-        <button
-          class="btn btn-sm btn-outline-secondary"
-          data-assign-task="${u.id}"
-          data-assign-name="${u.name}">
-          Assign tasks
-        </button>
+          <button
+            class="btn btn-sm btn-outline-secondary"
+            data-assign-task="${u.id}"
+            data-assign-name="${u.name}">
+            Assign tasks
+          </button>
+        </div>
       </td>
     </tr>
   `).join("");
+
+  wireUserRowActions();
+}
+
+async function loadUsers() {
+  allUsers = await api("/users");
+  updateStats(allUsers);
+  applySearchFilter();
+}
+
+function applySearchFilter() {
+  const q = $("usersSearch")?.value?.trim().toLowerCase() || "";
+  const filtered = !q
+    ? allUsers
+    : allUsers.filter(u =>
+        u.name.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        u.role.toLowerCase().includes(q)
+      );
+
+  renderUsers(filtered);
+}
+
+async function createUser() {
+  const name = $("userName").value.trim();
+  const email = $("userEmail").value.trim();
+  const password = $("userPassword").value;
+  const role = $("userRole").value;
+
+  if (!name || !email || !password) {
+    setAlert("danger", "Name, email and password are required.");
+    return;
+  }
+
+  await api("/users", {
+    method: "POST",
+    json: { name, email, password, role }
+  });
+
+  $("userName").value = "";
+  $("userEmail").value = "";
+  $("userPassword").value = "";
+  $("userRole").value = "VOLUNTEER";
+
+  setAlert("success", "User created successfully.");
+  await loadUsers();
+}
+
+function wireUserRowActions() {
+  const tbody = $("usersTable");
+  if (!tbody) return;
 
   tbody.querySelectorAll("[data-save-role]").forEach(btn => {
     btn.addEventListener("click", async () => {
@@ -61,10 +135,10 @@ async function loadUsers() {
           method: "PATCH",
           json: { role }
         });
-        alert("Role updated.");
+        setAlert("success", "Role updated.");
         await loadUsers();
       } catch (e) {
-        alert(e.message || "Failed to update role.");
+        setAlert("danger", e.message || "Failed to update role.");
       }
     });
   });
@@ -79,10 +153,10 @@ async function loadUsers() {
           method: "PATCH",
           json: { active }
         });
-        alert(active ? "User reactivated." : "User deactivated.");
+        setAlert("success", active ? "User reactivated." : "User deactivated.");
         await loadUsers();
       } catch (e) {
-        alert(e.message || "Failed to change user status.");
+        setAlert("danger", e.message || "Failed to change user status.");
       }
     });
   });
@@ -92,41 +166,26 @@ async function loadUsers() {
       const userId = Number(btn.getAttribute("data-assign-task"));
       const name = btn.getAttribute("data-assign-name") || "User";
 
-      document.getElementById("assignUserId").value = userId;
-      document.getElementById("assignUserName").textContent = name;
+      $("assignUserId").value = userId;
+      $("assignUserName").textContent = name;
 
-      await loadAllTasksForAssignment();
-      await loadAssignedTasksForUser(userId);
+      try {
+        await loadAllTasksForAssignment();
+        await loadAssignedTasksForUser(userId);
 
-      const modalEl = document.getElementById("assignTasksModal");
-      if (modalEl && window.bootstrap) {
-        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        const modalEl = $("assignTasksModal");
+        if (modalEl && window.bootstrap) {
+          bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        }
+      } catch (e) {
+        setAlert("danger", e.message || "Failed to load assignments.");
       }
     });
   });
 }
 
-async function createUser() {
-  const name = document.getElementById("userName").value.trim();
-  const email = document.getElementById("userEmail").value.trim();
-  const password = document.getElementById("userPassword").value;
-  const role = document.getElementById("userRole").value;
-
-  await api("/users", {
-    method: "POST",
-    json: { name, email, password, role }
-  });
-
-  document.getElementById("userName").value = "";
-  document.getElementById("userEmail").value = "";
-  document.getElementById("userPassword").value = "";
-  document.getElementById("userRole").value = "VOLUNTEER";
-
-  await loadUsers();
-}
-
 async function loadAllTasksForAssignment() {
-  const container = document.getElementById("allTasksList");
+  const container = $("allTasksList");
   if (!container) return;
 
   const today = new Date().toISOString().slice(0, 10);
@@ -144,7 +203,7 @@ async function loadAllTasksForAssignment() {
 
   container.querySelectorAll("[data-pick-task]").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const userId = Number(document.getElementById("assignUserId").value);
+      const userId = Number($("assignUserId").value);
       const taskId = Number(btn.getAttribute("data-pick-task"));
 
       try {
@@ -153,16 +212,17 @@ async function loadAllTasksForAssignment() {
           json: { taskId, userId }
         });
 
+        setAlert("success", "Task assigned.");
         await loadAssignedTasksForUser(userId);
       } catch (e) {
-        alert(e.message || "Failed to assign task.");
+        setAlert("danger", e.message || "Failed to assign task.");
       }
     });
   });
 }
 
 async function loadAssignedTasksForUser(userId) {
-  const container = document.getElementById("assignedTasksList");
+  const container = $("assignedTasksList");
   if (!container) return;
 
   const assignments = await api(`/task-assignments/user/${userId}`);
@@ -190,21 +250,29 @@ async function loadAssignedTasksForUser(userId) {
           method: "PATCH"
         });
 
+        setAlert("success", "Task removed.");
         await loadAssignedTasksForUser(userId);
       } catch (e) {
-        alert(e.message || "Failed to remove assignment.");
+        setAlert("danger", e.message || "Failed to remove assignment.");
       }
     });
   });
 }
 
-document.getElementById("btnCreateUser")?.addEventListener("click", async () => {
+document.addEventListener("DOMContentLoaded", async () => {
+  $("btnCreateUser")?.addEventListener("click", async () => {
+    try {
+      await createUser();
+    } catch (e) {
+      setAlert("danger", e.message || "Failed to create user.");
+    }
+  });
+
+  $("usersSearch")?.addEventListener("input", applySearchFilter);
+
   try {
-    await createUser();
+    await loadUsers();
   } catch (e) {
-    alert(e.message || "Failed to create user.");
+    setAlert("danger", e.message || "Failed to load users.");
   }
 });
-
-loadUsers();
-
