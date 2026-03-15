@@ -16,7 +16,6 @@ const adminCriticalRoutes = require("./routes/adminCritical");
 const adminEmailRoutes = require("./routes/adminEmail");
 const adminExportRoutes = require("./routes/adminExport");
 const dashboardRoutes = require("./routes/dashboard");
-const userRoutes = require("./routes/users")
 const userRoutes = require("./routes/users");
 const taskAssignmentRoutes = require("./routes/taskAssignments");
 

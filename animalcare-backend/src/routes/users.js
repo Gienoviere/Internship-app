@@ -238,3 +238,32 @@ router.patch(
     res.json(user)
   }
 )
+
+router.patch("/:id/active", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { active } = req.body;
+
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "Invalid id" });
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { active: Boolean(active) },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        active: true,
+      },
+    });
+
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+

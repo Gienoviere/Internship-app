@@ -1,0 +1,80 @@
+<h1>User management</h1>
+
+<div class="card mb-3">
+<div class="card-body">
+
+<h5>Create account</h5>
+
+<input id="userName" class="form-control mb-2" placeholder="Name">
+<input id="userEmail" class="form-control mb-2" placeholder="Email">
+<input id="userPassword" type="password" class="form-control mb-2" placeholder="Password">
+
+<select id="userRole" class="form-select mb-2">
+<option value="VOLUNTEER">Volunteer</option>
+<option value="FARMER">Farmer</option>
+<option value="SUPERVISOR">Admin</option>
+<option value="SUPERVISOR">Supervisor</option>
+</select>
+
+<button id="btnCreateUser" class="btn btn-primary">Create user</button>
+
+</div>
+</div>
+
+<div class="card">
+<div class="card-body">
+
+<h5>Users</h5>
+
+<table class="table">
+<thead>
+<tr>
+<th>Name</th>
+<th>Email</th>
+<th>Role</th>
+<th>Active</th>
+</tr>
+</thead>
+
+<tbody id="usersTable"></tbody>
+
+</table>
+
+</div>
+</div>
+
+<div class="modal fade" id="assignTasksModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          Assign tasks to <span id="assignUserName"></span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="assignUserId">
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <h6>Available tasks</h6>
+            <div id="allTasksList" class="list-group"></div>
+          </div>
+
+          <div class="col-md-6">
+            <h6>Assigned tasks</h6>
+            <div id="assignedTasksList" class="list-group"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script type="module" src="./js/users-page.js"></script>
