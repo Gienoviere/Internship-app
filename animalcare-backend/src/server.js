@@ -18,6 +18,7 @@ const adminExportRoutes = require("./routes/adminExport");
 const dashboardRoutes = require("./routes/dashboard");
 const userRoutes = require("./routes/users");
 const taskAssignmentRoutes = require("./routes/taskAssignments");
+const googleCalendarRoutes = require("./routes/googleCalendar");
 
 
 const app = express();
@@ -49,6 +50,8 @@ app.use("/dashboard", dashboardRoutes);
 app.use("/api", userRoutes)
 app.use("/users", userRoutes);
 app.use("/task-assignments", taskAssignmentRoutes);
+app.use("/google-calendar", googleCalendarRoutes);
+
 
 // Start server LAST
 const PORT = process.env.PORT || 3001;

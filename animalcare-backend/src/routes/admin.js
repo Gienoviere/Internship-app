@@ -22,7 +22,7 @@ function addDaysUTC(dateObj, days) {
 /**
  * GET /admin/daily-overview?date=YYYY-MM-DD
  */
-router.get("/daily-overview", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+router.get("/daily-overview", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const { date } = req.query;
     if (!isValidISODateOnly(date)) {
@@ -102,7 +102,7 @@ router.get("/daily-overview", requireAuth, requireRole(["ADMIN"]), async (req, r
 /**
  * GET /admin/missed-tasks?date=YYYY-MM-DD
  */
-router.get("/missed-tasks", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+router.get("/missed-tasks", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const { date } = req.query;
     if (!isValidISODateOnly(date)) {
@@ -139,7 +139,7 @@ router.get("/missed-tasks", requireAuth, requireRole(["ADMIN"]), async (req, res
 /**
  * GET /admin/inventory-warnings?lookbackDays=14&warnDays=21&criticalDays=7
  */
-router.get("/inventory-warnings", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+router.get("/inventory-warnings", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const lookbackDays = Math.max(3, Math.min(60, Number(req.query.lookbackDays ?? 14)));
     const warnDays = Math.max(1, Math.min(365, Number(req.query.warnDays ?? 21)));

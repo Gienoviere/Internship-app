@@ -15,7 +15,7 @@ function esc(s) {
 router.post(
   "/send-daily-summary",
   requireAuth,
-  requireRole(["ADMIN"]),
+  requireRole(["ADMIN", "SUPERVISOR"]),
   async (req, res) => {
     try {
       const { date, lookbackDays, warnDays, criticalDays } = req.body || {};

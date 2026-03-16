@@ -20,7 +20,7 @@ function toDateOnlyUTC(dateStr) {
 router.get(
   "/critical-observations",
   requireAuth,
-  requireRole(["ADMIN"]),
+  requireRole(["ADMIN", "SUPERVISOR"]),
   async (req, res) => {
     try {
       const { date } = req.query;

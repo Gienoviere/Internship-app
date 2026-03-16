@@ -82,12 +82,6 @@ async function loadFeedItems() {
   }
 }
 
-// quick logs, made bij gienoviere
-wireQuickLogShared(async () => {
-  window.location.reload();
-});
-
-
 async function loadMovements() {
   try {
     const movs = await fetchMovements();
@@ -167,6 +161,28 @@ async function deleteMovement(id) {
 
 // ========== EVENT LISTENERS ==========
 document.addEventListener('DOMContentLoaded', () => {
+  // Code for the button to connect the google calende
+  document.getElementById("btnConnectGoogleCalendar")?.addEventListener("click", async () => {
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(`${API_BASE}/google-calendar/connect`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+  if (data.url) {
+    window.location.href = data.url;
+  }
+});
+
+// quick logs, made bij gienoviere
+  wireQuickLogShared(async () => {
+    window.location.reload();
+  });
+
+
   //User badge check, made by gienoviere, leave it!!  
   setTimeout(() => {
     syncNavbarUser();
