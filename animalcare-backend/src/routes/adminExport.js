@@ -8,7 +8,7 @@ const router = express.Router();
 router.get(
   "/export-daily.csv",
   requireAuth,
-  requireRole(["ADMIN"]),
+  requireRole(["ADMIN", "SUPERVISOR"]),
   async (req, res) => {
     try {
       const { date } = req.query;

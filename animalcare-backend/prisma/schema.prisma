@@ -35,6 +35,10 @@ model User {
   observations Observation[] @relation("UserObservations")
 
   taskAssignments TaskAssignment[]
+
+  googleAccessToken String?
+  googleRefreshToken String?
+  googleExpiry DateTime?
 }
 
 model Task {

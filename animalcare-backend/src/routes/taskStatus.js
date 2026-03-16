@@ -29,23 +29,33 @@ router.get("/today", requireAuth, async (req, res) => {
     const isManager = ["ADMIN", "SUPERVISOR"].includes(req.user.role);
 
     const tasks = isManager
-      ? await prisma.task.findMany({
-          where: { active: true, isDaily: true },
-          orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-        })
-      : await prisma.task.findMany({
-          where: {
+  ? await prisma.task.findMany({
+      where: { active: true, isDaily: true },
+      include: {
+        feedItem: {
+          select: { name: true }
+        }
+      },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    })
+  : await prisma.task.findMany({
+      where: {
+        active: true,
+        isDaily: true,
+        assignments: {
+          some: {
+            userId: req.user.userId,
             active: true,
-            isDaily: true,
-            assignments: {
-              some: {
-                userId: req.user.userId,
-                active: true,
-              },
-            },
           },
-          orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
-        });
+        },
+      },
+      include: {
+        feedItem: {
+          select: { name: true }
+        }
+      },
+      orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+    });
 
     const myLogs = await prisma.dailyLog.findMany({
       where: {
@@ -61,18 +71,19 @@ router.get("/today", requireAuth, async (req, res) => {
     const byTaskId = new Map(myLogs.map((l) => [l.taskId, l]));
 
     const result = tasks.map((t) => {
-      const log = byTaskId.get(t.id) || null;
-      return {
-        taskId: t.id,
-        taskName: t.name,
-        category: t.category,
-        logged: Boolean(log),
-        completed: log ? log.completed : false,
-        quantityGrams: log ? log.quantityGrams : null,
-        notes: log ? log.notes : null,
-        logId: log ? log.id : null,
-      };
-    });
+    const log = byTaskId.get(t.id) || null;
+    return {
+      taskId: t.id,
+      taskName: t.name,
+      category: t.category,
+      feedItemName: t.feedItem?.name || null,
+      logged: Boolean(log),
+      completed: log ? log.completed : false,
+      quantityGrams: log ? log.quantityGrams : null,
+      notes: log ? log.notes : null,
+      logId: log ? log.id : null,
+    };
+  });
 
     res.json({ date, tasks: result });
   } catch (err) {

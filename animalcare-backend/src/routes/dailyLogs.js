@@ -1,6 +1,7 @@
 const express = require("express");
 const prisma = require("../prisma");
 const requireAuth = require("../middleware/requireAuth");
+const { createRestockEventForUser } = require("../lib/googleCalendar")
 
 const router = express.Router();
 
@@ -195,6 +196,21 @@ if (log.task.affectsInventory && log.task.feedItemId) {
 
       return { log, inventory };
     });
+    try {
+    const feedItem = result.inventory?.feedItem;
+    const threshold = 5000;
+
+    if (feedItem && feedItem.stockGrams <= threshold) {
+      await createRestockEventForUser(
+        req.user.userId,
+        feedItem.name,
+        feedItem.stockGrams,
+        threshold
+      );
+    }
+  } catch (err) {
+    console.error("Calendar event creation failed after daily log:", err.message);
+  }
 
     res.status(201).json(result);
   } catch (err) {
@@ -301,6 +317,22 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
       return { log, inventory };
     });
+
+    try {
+      const feedItem = result.inventory?.feedItem;
+      const threshold = 5000;
+
+      if (feedItem && feedItem.stockGrams <= threshold) {
+        await createRestockEventForUser(
+          req.user.userId,
+          feedItem.name,
+          feedItem.stockGrams,
+          threshold
+        );
+      }
+    } catch (err) {
+      console.error("Calendar event creation failed after daily log edit:", err.message);
+    }
 
     res.json(result);
   } catch (err) {

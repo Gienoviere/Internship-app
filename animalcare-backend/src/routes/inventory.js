@@ -2,6 +2,7 @@ const express = require("express");
 const prisma = require("../prisma");
 const requireAuth = require("../middleware/requireAuth");
 const requireRole = require("../middleware/requireRole");
+const { createRestockEventForUser } = require("../lib/googleCalendar");
 
 const router = express.Router();
 
@@ -28,7 +29,7 @@ function parseDateInput(dateStr) {
 /**
  * GET /inventory/feed-items
  */
-router.get("/feed-items", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+router.get("/feed-items", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const items = await prisma.feedItem.findMany({
       orderBy: [{ name: "asc" }],
@@ -43,7 +44,7 @@ router.get("/feed-items", requireAuth, requireRole(["ADMIN"]), async (req, res) 
 /**
  * POST /inventory/feed-items
  */
-router.post("/feed-items", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+router.post("/feed-items", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const { name, stockGrams, reorderRule } = req.body || {};
 
@@ -75,7 +76,7 @@ router.post("/feed-items", requireAuth, requireRole(["ADMIN"]), async (req, res)
 /**
  * PATCH /inventory/feed-items/:id
  */
-router.patch("/feed-items/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+router.patch("/feed-items/:id", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: "Invalid id" });
@@ -90,6 +91,10 @@ router.patch("/feed-items/:id", requireAuth, requireRole(["ADMIN"]), async (req,
       }
     }
 
+    // low-stock calendar creation
+    const before = await prisma.feedItem.findUnique({ where: { id } });
+    if (!before) return res.status(404).json({ error: "Feed item not found" });
+
     const item = await prisma.feedItem.update({
       where: { id },
       data: {
@@ -99,6 +104,27 @@ router.patch("/feed-items/:id", requireAuth, requireRole(["ADMIN"]), async (req,
         ...(active !== undefined ? { active: Boolean(active) } : {}),
       },
     });
+
+    // crude threshold example; improve tomorrow if needed
+    const threshold = 5000;
+
+    // only trigger when it crosses from above threshold to at/below threshold
+    if (
+      stockGrams !== undefined &&
+      before.stockGrams > threshold &&
+      item.stockGrams <= threshold
+    ) {
+      try {
+        await createRestockEventForUser(
+          req.user.userId,
+          item.name,
+          item.stockGrams,
+          threshold
+        );
+      } catch (err) {
+        console.error("Calendar event creation failed:", err.message);
+      }
+    }
 
     res.json(item);
   } catch (err) {
@@ -137,7 +163,7 @@ router.delete("/feed-items/:id", requireAuth, requireRole(["ADMIN"]), async (req
 /**
  * POST /inventory/movements
  */
-router.post("/movements", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+router.post("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const { feedItemId, date, deltaGrams, reason } = req.body || {};
 
@@ -179,6 +205,21 @@ router.post("/movements", requireAuth, requireRole(["ADMIN"]), async (req, res) 
         data: { stockGrams: item.stockGrams + Math.round(delta) },
       });
 
+      const threshold = 5000;
+
+      if (updated.stockGrams <= threshold) {
+        try {
+          await createRestockEventForUser(
+            req.user.userId,
+            updated.name,
+            updated.stockGrams,
+            threshold
+          );
+        } catch (err) {
+          console.error("Calendar event creation failed:", err.message);
+        }
+      }
+
       return { movement, updated };
     });
 
@@ -193,7 +234,7 @@ router.post("/movements", requireAuth, requireRole(["ADMIN"]), async (req, res) 
 /**
  * GET /inventory/movements
  */
-router.get("/movements", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+router.get("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const { feedItemId, date } = req.query;
 

@@ -34,13 +34,13 @@ export async function loadQuickLogTasksShared() {
   const tasks = data.tasks || [];
 
   select.innerHTML = `
-    <option value="">Select a task</option>
-    ${tasks.map(t => `
-      <option value="${t.taskId}">
-        ${t.taskName}${t.logged ? " (already logged)" : ""}
-      </option>
-    `).join("")}
-  `;
+  <option value="">Select a task</option>
+  ${tasks.map(t => `
+    <option value="${t.taskId}">
+      ${t.taskName}${t.feedItemName ? ` (uses ${t.feedItemName})` : ""}${t.logged ? " (already logged)" : ""}
+    </option>
+  `).join("")}
+`;
 }
 
 export async function saveQuickLogShared(onSuccess) {
