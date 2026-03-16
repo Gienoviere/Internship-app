@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     else if (btn.classList.contains('consume-btn')) {
       currentConsumeId = id;
-      document.getElementById('consumeDate').value = new Date().toISOString().slice(0, 16);
+      document.getElementById('consumeDate').value = new Date().toISOString().split('T')[0];
       document.getElementById('consumeAmount').value = '';
       document.getElementById('consumeReason').value = '';
       new bootstrap.Modal(document.getElementById('consumeModal')).show();
@@ -234,7 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     else if (btn.classList.contains('add-stock-btn')) {
       currentAddStockId = id;
-      document.getElementById('addStockDate').value = new Date().toISOString().slice(0, 16);
+      document.getElementById('addStockDate').value = new Date().toISOString().split('T')[0];
       document.getElementById('addStockAmount').value = '';
       document.getElementById('addStockReason').value = '';
       new bootstrap.Modal(document.getElementById('addStockModal')).show();
@@ -496,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
         option.textContent = `${item.name} (current: ${(item.stockGrams / 1000).toFixed(1)} kg)`;
         updateStockSelect.appendChild(option);
       });
-      document.getElementById('updateStockDate').value = new Date().toISOString().slice(0, 16);
+      document.getElementById('updateStockDate').value = new Date().toISOString().split('T')[0];
       document.getElementById('updateStockAmount').value = '';
       document.getElementById('updateStockReason').value = '';
     });

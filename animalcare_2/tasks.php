@@ -38,7 +38,7 @@ include 'header.php';
                 </select>
             </div>
             <div class="col-md-3">
-                <input type="datetime-local" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>">
+                <input type="date" class="form-control form-control-sm" value="<?php echo date('Y-m-d'); ?>">
             </div>
         </div>
     </div>
