@@ -91,15 +91,15 @@ export function renderTable() {
           <button class="btn btn-outline-warning btn-sm consume-btn" data-id="${item.id}">
             <i class="bi bi-arrow-down-circle"></i>
           </button>
-
+          <button class="btn btn-outline-success btn-sm add-stock-btn" data-id="${item.id}">
+            <i class="bi bi-plus-circle"></i>
+          </button>
           <button class="btn btn-outline-secondary btn-sm edit-btn" data-id="${item.id}">
             <i class="bi bi-pencil"></i>
           </button>
-
           <button class="btn btn-outline-info btn-sm history-btn" data-id="${item.id}">
             <i class="bi bi-clock"></i>
           </button>
-
           <button class="btn btn-outline-danger btn-sm delete-item-btn" data-id="${item.id}">
             <i class="bi bi-trash"></i>
           </button>
@@ -111,9 +111,8 @@ export function renderTable() {
             <button class="btn btn-outline-warning btn-sm w-50 consume-btn" data-id="${item.id}">
               <i class="bi bi-arrow-down-circle"></i>
             </button>
-
-            <button class="btn btn-outline-secondary btn-sm w-50 edit-btn" data-id="${item.id}">
-              <i class="bi bi-pencil"></i>
+            <button class="btn btn-outline-success btn-sm w-50 add-stock-btn" data-id="${item.id}">
+              <i class="bi bi-plus-circle"></i>
             </button>
           </div>
 
@@ -188,7 +187,7 @@ export function renderUsageHistory() {
   const now = new Date();
   const cutoff = new Date(now.getTime() - settings.avgDays * 24 * 60 * 60 * 1000);
   const recentMovements = movements
-    .filter(m => new Date(m.date) >= cutoff && m.deltaGrams < 0)
+    .filter(m => new Date(m.date) >= cutoff) // alle bewegingen (zowel + als -)
     .sort((a, b) => new Date(b.date) - new Date(a.date));
 
   if (recentMovements.length === 0) {
@@ -210,7 +209,9 @@ export function renderUsageHistory() {
         </div>
       </td>
 
-      <td class="text-nowrap">${(-m.deltaGrams / 1000).toFixed(1)} kg</td>
+      <td class="text-nowrap ${m.deltaGrams > 0 ? 'text-success' : ''}">
+        ${m.deltaGrams > 0 ? '+' : ''}${(m.deltaGrams / 1000).toFixed(1)} kg
+      </td>
 
       <td class="d-none d-md-table-cell">${m.reason || '-'}</td>
 
@@ -230,11 +231,11 @@ export function showHistory(itemId) {
   const item = feedItems.find(i => i.id === itemId);
   if (!item) return;
   document.getElementById('historyItemName').textContent = item.name;
-  const itemMovements = movements.filter(m => m.feedItemId === itemId && m.deltaGrams < 0).sort((a,b) => new Date(b.date) - new Date(a.date));
+  const itemMovements = movements.filter(m => m.feedItemId === itemId).sort((a,b) => new Date(b.date) - new Date(a.date));
   let rows = '';
   itemMovements.forEach(m => {
-    rows += `<tr><td>${new Date(m.date).toLocaleDateString()}</td><td>${(-m.deltaGrams / 1000).toFixed(1)} kg</td><td>${m.reason || '-'}</td></tr>`;
-  });
+    rows += `<tr><td>${new Date(m.date).toLocaleDateString()}</td><td>${(m.deltaGrams > 0 ? '+' : '')}${(m.deltaGrams / 1000).toFixed(1)} kg</td><td>${m.reason || '-'}</td></tr>`;
+    });
   document.getElementById('historyTableBody').innerHTML = rows || '<tr><td colspan="3" class="text-muted text-center">No usage recorded</td></tr>';
   new bootstrap.Modal(document.getElementById('historyModal')).show();
 }

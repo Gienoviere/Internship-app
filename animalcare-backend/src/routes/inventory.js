@@ -227,4 +227,61 @@ router.get("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asyn
   }
 });
 
+// DELETE /inventory/feed-items/:id
+router.delete("/feed-items/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "Invalid id" });
+    }
+
+    // Controleer of het item bestaat
+    const item = await prisma.feedItem.findUnique({ where: { id } });
+    if (!item) {
+      return res.status(404).json({ error: "Feed item not found" });
+    }
+
+    // Verwijder in transactie: eerst movements, dan het item zelf
+    await prisma.$transaction([
+      prisma.inventoryMovement.deleteMany({ where: { feedItemId: id } }),
+      prisma.feedItem.delete({ where: { id } })
+    ]);
+
+    res.json({ message: "Feed item and associated movements deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+// DELETE /inventory/movements/:id
+router.delete("/movements/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "Invalid id" });
+    }
+
+    // Zoek de movement (inclusief feedItemId en deltaGrams)
+    const movement = await prisma.inventoryMovement.findUnique({ where: { id } });
+    if (!movement) {
+      return res.status(404).json({ error: "Movement not found" });
+    }
+
+    // Pas de voorraad aan (delta ongedaan maken) en verwijder de movement in één transactie
+    await prisma.$transaction([
+      prisma.feedItem.update({
+        where: { id: movement.feedItemId },
+        data: { stockGrams: { decrement: movement.deltaGrams } } // delta kan negatief zijn; decrement met negatief getal = verhogen
+      }),
+      prisma.inventoryMovement.delete({ where: { id } })
+    ]);
+
+    res.json({ message: "Movement deleted and stock adjusted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 module.exports = router;
