@@ -17,6 +17,9 @@ import {
 import { loadSettings, saveSettings } from './settings.js';
 import { wireQuickLogShared } from "/js/quick-log.js";
 
+console.log("main.js loaded");
+window.testGoogleLoaded = true;
+
 // code for user badge, made by gienoviere, don't touch it!!
 async function syncNavbarUser() {
   try {
@@ -171,21 +174,52 @@ async function deleteMovement(id) {
 // ========== EVENT LISTENERS ==========
 document.addEventListener('DOMContentLoaded', () => {
   // Code for the button to connect the google calende
-  document.getElementById("btnConnectGoogleCalendar")?.addEventListener("click", async () => {
-  const token = localStorage.getItem("token");
+  const googleBtn = document.getElementById("btnConnectGoogleCalendar");
 
-  const res = await fetch(`${API_BASE}/google-calendar/connect`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+if (googleBtn) {
+  googleBtn.addEventListener("click", async () => {
+    alert("Google button clicked");
+
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("No token found. Please log in again.");
+        return;
+      }
+
+      const res = await fetch(`${API_BASE}/google-calendar/connect`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      alert(`Response status: ${res.status}`);
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Connect failed:", text);
+        alert("Connect request failed");
+        return;
+      }
+
+      const data = await res.json();
+      console.log("Google connect data:", data);
+
+      if (data.url) {
+        window.open(data.url, "googleAuth", "width=520,height=700");
+      } else {
+        alert("No URL returned from backend");
+      }
+    } catch (err) {
+      console.error("Google Calendar error:", err);
+      alert("Google Calendar crashed");
+    }
   });
-
-  const data = await res.json();
-  if (data.url) {
-    window.location.href = data.url;
-  }
-});
-
+} else {
+  console.error("btnConnectGoogleCalendar not found");
+}
 // quick logs, made bij gienoviere
   wireQuickLogShared(async () => {
     window.location.reload();
@@ -534,3 +568,45 @@ document.addEventListener('DOMContentLoaded', () => {
     console.warn('Inventory Update Modal elements not found – check IDs in HTML');
   }
 });
+
+// connector for google calender
+window.connectGoogleCalendar = async function () {
+  try {
+    alert("Google button clicked");
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      alert("No token found. Please log in again.");
+      return;
+    }
+
+    const res = await fetch(`${API_BASE}/google-calendar/connect`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    alert(`Response status: ${res.status}`);
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Connect failed:", text);
+      alert("Connect request failed");
+      return;
+    }
+
+    const data = await res.json();
+    console.log("Google connect data:", data);
+
+    if (data.url) {
+      window.open(data.url, "_blank", "width=520,height=700");
+    } else {
+      alert("No URL returned from backend");
+    }
+  } catch (err) {
+    console.error("Google Calendar error:", err);
+    alert("Google Calendar crashed");
+  }
+};

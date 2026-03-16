@@ -26,25 +26,40 @@ router.get("/callback", async (req, res) => {
     const userId = Number(state);
 
     if (!code || !userId) {
-      return res.status(400).send("Missing code or state");
+      return res.status(400).send(`Missing code or invalid state. code=${!!code}, state=${state}`);
     }
 
     const oauth2Client = createOAuthClient();
-    const { tokens } = await oauth2Client.getToken(code);
+    const tokenResponse = await oauth2Client.getToken(code);
+    const tokens = tokenResponse.tokens;
+
+    console.log("GOOGLE TOKENS RECEIVED:", {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
+      expiryDate: tokens.expiry_date || null
+    });
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
+    if (!existingUser) {
+      return res.status(404).send(`User not found for state ${userId}`);
+    }
 
     await prisma.user.update({
       where: { id: userId },
       data: {
         googleAccessToken: tokens.access_token || null,
         googleRefreshToken: tokens.refresh_token || null,
-        googleTokenExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+        googleExpiry: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
       },
     });
 
     res.send("Google Calendar connected successfully. You can close this tab.");
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Google Calendar connection failed.");
+    console.error("GOOGLE CALLBACK ERROR:", err);
+    res.status(500).send(`Google Calendar connection failed: ${err.message}`);
   }
 });
 

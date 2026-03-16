@@ -118,9 +118,16 @@
                 <i class="bi bi-people me-2"></i>Users
               </a>
             </li>
-            <button id="btnConnectGoogleCalendar" class="btn btn-outline-primary">
-              Connect Google Calendar
-            </button>
+            <li class="nav-item">
+              <button
+                id="btnConnectGoogleCalendar"
+                type="button"
+                class="btn btn-outline-primary w-100"
+                
+              >
+                Connect Google Calendar
+              </button>
+            </li>
             <li class="nav-item"><a class="nav-link text-dark" href="#"><i class="bi bi-book me-2"></i>Manual</a></li>
             <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Snel acties</h6></li>
             <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Snelle log</a></li>
@@ -615,5 +622,58 @@
       });
     });
   </script>
+
+  <script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("btnConnectGoogleCalendar");
+
+    if (!btn) {
+      console.error("Google button not found");
+      return;
+    }
+
+    btn.addEventListener("click", async function () {
+      alert("Google button clicked");
+
+      try {
+        const token = localStorage.getItem("token");
+
+        if (!token) {
+          alert("No login token found. Please log in again.");
+          return;
+        }
+
+        const res = await fetch("http://localhost:3001/google-calendar/connect", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        alert("Response status: " + res.status);
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.error("Connect failed:", text);
+          alert("Connect failed");
+          return;
+        }
+
+        const data = await res.json();
+        console.log("Google connect response:", data);
+
+        if (data.url) {
+          window.open(data.url, "googleAuth", "width=520,height=700");
+        } else {
+          alert("No URL returned by backend");
+        }
+      } catch (err) {
+        console.error("Google Calendar connect error:", err);
+        alert("Google Calendar crashed");
+      }
+    });
+  });
+</script>
+
 </body>
 </html>
