@@ -200,7 +200,7 @@ export function renderUsageHistory() {
     const item = feedItems.find(i => i.id === m.feedItemId);
     const itemName = item ? item.name : `Unknown (${m.feedItemId})`;
     html += `<tr>
-      <td class="text-nowrap">${new Date(m.date).toLocaleDateString()}</td>
+      <td class="text-nowrap">${new Date(m.date).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</td>
 
       <td>
         <div class="fw-semibold">${itemName}</div>
@@ -234,7 +234,7 @@ export function showHistory(itemId) {
   const itemMovements = movements.filter(m => m.feedItemId === itemId).sort((a,b) => new Date(b.date) - new Date(a.date));
   let rows = '';
   itemMovements.forEach(m => {
-    rows += `<tr><td>${new Date(m.date).toLocaleDateString()}</td><td>${(m.deltaGrams > 0 ? '+' : '')}${(m.deltaGrams / 1000).toFixed(1)} kg</td><td>${m.reason || '-'}</td></tr>`;
+    rows += `<tr><td>${new Date(m.date).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</td><td>${(m.deltaGrams > 0 ? '+' : '')}${(m.deltaGrams / 1000).toFixed(1)} kg</td><td>${m.reason || '-'}</td></tr>`;
     });
   document.getElementById('historyTableBody').innerHTML = rows || '<tr><td colspan="3" class="text-muted text-center">No usage recorded</td></tr>';
   new bootstrap.Modal(document.getElementById('historyModal')).show();

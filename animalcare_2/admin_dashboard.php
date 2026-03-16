@@ -250,10 +250,10 @@ include 'header.php';
                         <label class="form-label">Periode</label>
                         <div class="row">
                             <div class="col-md-6">
-                                <input type="date" class="form-control" value="<?php echo date('Y-m-d', strtotime('-30 days')); ?>">
+                                <input type="datetime-local" class="form-control" value="<?php echo date('Y-m-d', strtotime('-30 days')); ?>">
                             </div>
                             <div class="col-md-6">
-                                <input type="date" class="form-control" value="<?php echo date('Y-m-d'); ?>">
+                                <input type="datetime-local" class="form-control" value="<?php echo date('Y-m-d'); ?>">
                             </div>
                         </div>
                     </div>
