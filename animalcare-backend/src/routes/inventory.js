@@ -6,12 +6,24 @@ const { createRestockEventForUser } = require("../lib/googleCalendar");
 
 const router = express.Router();
 
-function isValidISODateOnly(s) {
-  return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
-}
-function toDateOnlyUTC(dateStr) {
-  const [y, m, d] = dateStr.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
+// Hulpfunctie om datum/tijd te valideren en te converteren
+function parseDateInput(dateStr) {
+  // Accepteert "YYYY-MM-DD" of "YYYY-MM-DDTHH:mm"
+  const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/;
+  if (!dateStr || !dateRegex.test(dateStr)) {
+    return null;
+  }
+  // Als er geen tijd is, voeg middernacht toe (lokale tijd)
+  let normalized = dateStr;
+  if (!dateStr.includes('T')) {
+    normalized += 'T00:00';
+  }
+  const date = new Date(normalized);
+  // Controleer of de datum geldig is
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
 }
 
 /**
@@ -31,7 +43,6 @@ router.get("/feed-items", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asy
 
 /**
  * POST /inventory/feed-items
- * Body: { name, stockGrams, reorderRule? }
  */
 router.post("/feed-items", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
@@ -64,7 +75,6 @@ router.post("/feed-items", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), as
 
 /**
  * PATCH /inventory/feed-items/:id
- * Body can include: stockGrams, reorderRule, active, name
  */
 router.patch("/feed-items/:id", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
@@ -124,18 +134,47 @@ router.patch("/feed-items/:id", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]
 });
 
 /**
+ * DELETE /inventory/feed-items/:id
+ */
+router.delete("/feed-items/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ error: "Invalid id" });
+    }
+
+    const item = await prisma.feedItem.findUnique({ where: { id } });
+    if (!item) {
+      return res.status(404).json({ error: "Feed item not found" });
+    }
+
+    await prisma.$transaction([
+      prisma.inventoryMovement.deleteMany({ where: { feedItemId: id } }),
+      prisma.feedItem.delete({ where: { id } })
+    ]);
+
+    res.json({ message: "Feed item and associated movements deleted" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+/**
  * POST /inventory/movements
- * Body: { feedItemId, date:"YYYY-MM-DD", deltaGrams, reason }
  */
 router.post("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const { feedItemId, date, deltaGrams, reason } = req.body || {};
 
     const fId = Number(feedItemId);
-    if (!Number.isInteger(fId)) return res.status(400).json({ error: "feedItemId must be an integer" });
+    if (!Number.isInteger(fId)) {
+      return res.status(400).json({ error: "feedItemId must be an integer" });
+    }
 
-    if (!isValidISODateOnly(date)) {
-      return res.status(400).json({ error: "date is required: YYYY-MM-DD" });
+    const movementDate = parseDateInput(date);
+    if (!movementDate) {
+      return res.status(400).json({ error: "date must be in format YYYY-MM-DD or YYYY-MM-DDTHH:mm" });
     }
 
     const delta = Number(deltaGrams);
@@ -147,8 +186,6 @@ router.post("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asy
       return res.status(400).json({ error: "reason is required" });
     }
 
-    const day = toDateOnlyUTC(date);
-
     const result = await prisma.$transaction(async (tx) => {
       const item = await tx.feedItem.findUnique({ where: { id: fId } });
       if (!item) throw new Error("FeedItem not found");
@@ -156,7 +193,7 @@ router.post("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asy
       const movement = await tx.inventoryMovement.create({
         data: {
           feedItemId: fId,
-          date: day,
+          date: movementDate, // nu een Date-object
           deltaGrams: Math.round(delta),
           reason: reason.trim(),
           userId: req.user.userId,
@@ -189,12 +226,13 @@ router.post("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asy
     res.status(201).json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    // Stuur de foutmelding naar de client voor debugging (tijdelijk)
+    res.status(500).json({ error: err.message });
   }
 });
 
 /**
- * GET /inventory/movements?feedItemId=1&date=YYYY-MM-DD
+ * GET /inventory/movements
  */
 router.get("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
@@ -209,8 +247,11 @@ router.get("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asyn
     }
 
     if (date !== undefined) {
-      if (!isValidISODateOnly(date)) return res.status(400).json({ error: "date must be YYYY-MM-DD" });
-      where.date = toDateOnlyUTC(date);
+      const movementDate = parseDateInput(date);
+      if (!movementDate) {
+        return res.status(400).json({ error: "date must be YYYY-MM-DD or YYYY-MM-DDTHH:mm" });
+      }
+      where.date = movementDate;
     }
 
     const moves = await prisma.inventoryMovement.findMany({
@@ -227,34 +268,9 @@ router.get("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asyn
   }
 });
 
-// DELETE /inventory/feed-items/:id
-router.delete("/feed-items/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
-  try {
-    const id = Number(req.params.id);
-    if (!Number.isInteger(id)) {
-      return res.status(400).json({ error: "Invalid id" });
-    }
-
-    // Controleer of het item bestaat
-    const item = await prisma.feedItem.findUnique({ where: { id } });
-    if (!item) {
-      return res.status(404).json({ error: "Feed item not found" });
-    }
-
-    // Verwijder in transactie: eerst movements, dan het item zelf
-    await prisma.$transaction([
-      prisma.inventoryMovement.deleteMany({ where: { feedItemId: id } }),
-      prisma.feedItem.delete({ where: { id } })
-    ]);
-
-    res.json({ message: "Feed item and associated movements deleted" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Server error" });
-  }
-});
-
-// DELETE /inventory/movements/:id
+/**
+ * DELETE /inventory/movements/:id
+ */
 router.delete("/movements/:id", requireAuth, requireRole(["ADMIN"]), async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -262,17 +278,15 @@ router.delete("/movements/:id", requireAuth, requireRole(["ADMIN"]), async (req,
       return res.status(400).json({ error: "Invalid id" });
     }
 
-    // Zoek de movement (inclusief feedItemId en deltaGrams)
     const movement = await prisma.inventoryMovement.findUnique({ where: { id } });
     if (!movement) {
       return res.status(404).json({ error: "Movement not found" });
     }
 
-    // Pas de voorraad aan (delta ongedaan maken) en verwijder de movement in één transactie
     await prisma.$transaction([
       prisma.feedItem.update({
         where: { id: movement.feedItemId },
-        data: { stockGrams: { decrement: movement.deltaGrams } } // delta kan negatief zijn; decrement met negatief getal = verhogen
+        data: { stockGrams: { decrement: movement.deltaGrams } }
       }),
       prisma.inventoryMovement.delete({ where: { id } })
     ]);

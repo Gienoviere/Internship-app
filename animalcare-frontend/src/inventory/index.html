@@ -235,7 +235,7 @@
           <form>
             <div class="mb-3">
               <label class="form-label">Date</label>
-              <input type="date" class="form-control" id="consumeDate" required>
+              <input type="datetime-local" class="form-control" id="consumeDate" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Amount used (kg)</label>
@@ -279,7 +279,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Date</label>
-              <input type="date" class="form-control" id="updateStockDate" required>
+              <input type="datetime-local" class="form-control" id="updateStockDate" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Amount (kg)</label>
@@ -316,7 +316,7 @@
           <form>
             <div class="mb-3">
               <label class="form-label">Date</label>
-              <input type="date" class="form-control" id="addStockDate" required>
+              <input type="datetime-local" class="form-control" id="addStockDate" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Amount (kg)</label>
@@ -348,7 +348,7 @@
           <h6 id="historyItemName" class="fw-semibold"></h6>
           <div class="table-responsive">
             <table class="table table-sm">
-              <thead><tr><th>Date</th><th>Amount (kg)</th><th>Reason</th></tr></thead>
+              <thead><tr><th>Date & time</th><th>Amount (kg)</th><th>Reason</th></tr></thead>
               <tbody id="historyTableBody"></tbody>
             </table>
           </div>
@@ -373,7 +373,7 @@
             <table class="table table-sm">
               <thead>
                 <tr>
-                  <th>Date</th>
+                  <th>Date & time</th>
                   <th>Item</th>
                   <th>Amount (kg)</th>
                   <th>Reason</th>
