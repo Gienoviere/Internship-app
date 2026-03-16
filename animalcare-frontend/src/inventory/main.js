@@ -66,6 +66,7 @@ async function syncNavbarUser() {
 // Globale variabelen voor modals
 let currentEditId = null;
 let currentConsumeId = null;
+let currentAddStockId = null;
 let currentDeleteMovementId = null;
 let currentDeleteItemId = null;
 
@@ -158,6 +159,14 @@ async function addConsumption(feedItemId, date, amountKg, reason) {
   showMessage('Usage logged');
 }
 
+async function addStock(feedItemId, date, amountKg, reason) {
+  const deltaGrams = Math.round(amountKg * 1000); // positief!
+  await createMovement(feedItemId, date, deltaGrams, reason);
+  await loadMovements();
+  await loadFeedItems();
+  showMessage('Stock added');
+}
+
 async function deleteMovement(id) {
   await apiDeleteMovement(id);
   await loadMovements();
@@ -206,6 +215,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const itemId = Number(btn.dataset.id);
       currentDeleteItemId = itemId;
       new bootstrap.Modal(document.getElementById('confirmDeleteItemModal')).show();
+    }
+    else if (btn.classList.contains('add-stock-btn')) {
+      currentAddStockId = id;
+      document.getElementById('addStockDate').value = new Date().toISOString().split('T')[0];
+      document.getElementById('addStockAmount').value = '';
+      document.getElementById('addStockReason').value = '';
+      new bootstrap.Modal(document.getElementById('addStockModal')).show();
     }
   });
 
@@ -256,6 +272,16 @@ document.addEventListener('DOMContentLoaded', () => {
     await addConsumption(currentConsumeId, date, amount, reason);
     bootstrap.Modal.getInstance(document.getElementById('consumeModal')).hide();
   });
+
+  document.getElementById('saveAddStockBtn').addEventListener('click', async () => {
+  if (!currentAddStockId) return;
+  const date = document.getElementById('addStockDate').value;
+  const amount = parseFloat(document.getElementById('addStockAmount').value);
+  const reason = document.getElementById('addStockReason').value.trim() || 'Restock';
+  if (!date || isNaN(amount) || amount <= 0) { alert('Invalid input'); return; }
+  await addStock(currentAddStockId, date, amount, reason);
+  bootstrap.Modal.getInstance(document.getElementById('addStockModal')).hide();
+});
 
   // Add item
   document.getElementById('saveAddBtn').addEventListener('click', async () => {
@@ -387,4 +413,39 @@ document.addEventListener('DOMContentLoaded', () => {
     loadFeedItems();
     loadMovements();
   }, 30000);
+
+// === Inventory Update Modal (via sidebar) ===
+const inventoryUpdateModal = document.getElementById('inventoryUpdateModal');
+const updateStockSelect = document.getElementById('updateStockItemId');
+const saveUpdateStockBtn = document.getElementById('saveUpdateStockBtn');
+
+if (inventoryUpdateModal && updateStockSelect && saveUpdateStockBtn) {
+  inventoryUpdateModal.addEventListener('show.bs.modal', () => {
+    updateStockSelect.innerHTML = '<option value="">Select an item...</option>';
+    feedItems.forEach(item => {
+      const option = document.createElement('option');
+      option.value = item.id;
+      option.textContent = `${item.name} (current: ${(item.stockGrams / 1000).toFixed(1)} kg)`;
+      updateStockSelect.appendChild(option);
+    });
+    document.getElementById('updateStockDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('updateStockAmount').value = '';
+    document.getElementById('updateStockReason').value = '';
+  });
+
+  saveUpdateStockBtn.addEventListener('click', async () => {
+    const itemId = parseInt(updateStockSelect.value);
+    const date = document.getElementById('updateStockDate').value;
+    const amount = parseFloat(document.getElementById('updateStockAmount').value);
+    const reason = document.getElementById('updateStockReason').value.trim() || 'Restock';
+
+    if (!itemId) { alert('Please select an item'); return; }
+    if (!date || isNaN(amount) || amount <= 0) { alert('Invalid date or amount'); return; }
+
+    await addStock(itemId, date, amount, reason);
+    bootstrap.Modal.getInstance(inventoryUpdateModal).hide();
+  });
+} else {
+  console.warn('Inventory Update Modal elements not found – check IDs in HTML');
+}
 });
