@@ -2,6 +2,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "dev:local": "cross-env VITE_API_BASE_URL=http://localhost:3001 vite",
     "dev:lan": "cross-env VITE_API_BASE_URL=http://192.168.20.13:3001 vite"
   },
