@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import { createHtmlPlugin } from "vite-plugin-html";
-import { resolve } from "path";
 
 export default defineConfig({
   plugins: [
@@ -15,12 +14,4 @@ export default defineConfig({
       ],
     }),
   ],
-  build: {
-    rollupOptions: {
-      input: {
-        main: resolve(__dirname, "index3.html"),
-        inventory: resolve(__dirname, "src/inventory/index.html"),
-      },
-    },
-  },
 });
