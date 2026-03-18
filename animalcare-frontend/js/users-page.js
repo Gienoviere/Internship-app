@@ -274,7 +274,7 @@ async function syncNavbarUser() {
       logoutBtn.classList.remove("d-none");
       logoutBtn.onclick = () => {
         localStorage.removeItem("token");
-        window.location.href = "/index3.html";
+        window.location.href = "/index.html";
       };
     }
   } catch (e) {

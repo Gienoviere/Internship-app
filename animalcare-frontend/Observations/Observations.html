@@ -34,7 +34,7 @@
         <div class="py-3">
           <ul class="nav nav-pills flex-column gap-1" id="sidebarNav">
             <li class="nav-item">
-              <a class="nav-link" href="/index3.html" data-page="index3.html">
+              <a class="nav-link" href="/index.html" data-page="index.html">
                 <i class="bi bi-speedometer2 me-2"></i>Dashboard
               </a>
             </li>
@@ -46,7 +46,7 @@
             </li>
 
             <li class="nav-item">
-              <a class="nav-link" href="/src/inventory/index.html" data-page="index.html">
+              <a class="nav-link" href="/public/inventory/index.html" data-page="index.html">
                 <i class="bi bi-box-seam me-2"></i>Inventory
               </a>
             </li>
@@ -164,7 +164,7 @@
   <script type="module" src="/js/observations-page.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const currentPage = window.location.pathname.split('/').pop() || 'index3.html';
+      const currentPage = window.location.pathname.split('/').pop() || 'index.html';
       const links = document.querySelectorAll('#sidebarNav .nav-link');
 
       links.forEach(link => {
