@@ -19,6 +19,7 @@ const dashboardRoutes = require("./routes/dashboard");
 const userRoutes = require("./routes/users");
 const taskAssignmentRoutes = require("./routes/taskAssignments");
 const googleCalendarRoutes = require("./routes/googleCalendar");
+const manualRoutes = require("./routes/manual");
 
 
 const app = express();
@@ -51,6 +52,7 @@ app.use("/api", userRoutes)
 app.use("/users", userRoutes);
 app.use("/task-assignments", taskAssignmentRoutes);
 app.use("/google-calendar", googleCalendarRoutes);
+app.use('/manual', manualRoutes);
 
 
 // Start server LAST

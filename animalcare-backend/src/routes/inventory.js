@@ -6,24 +6,14 @@ const { createRestockEventForUser } = require("../lib/googleCalendar");
 
 const router = express.Router();
 
-// Hulpfunctie om datum/tijd te valideren en te converteren
-function parseDateInput(dateStr) {
-  // Accepteert "YYYY-MM-DD" of "YYYY-MM-DDTHH:mm"
-  const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/;
+// Hulpfunctie: accepteert alleen "YYYY-MM-DD" en retourneert UTC middernacht
+function toUTCDateOnly(dateStr) {
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!dateStr || !dateRegex.test(dateStr)) {
     return null;
   }
-  // Als er geen tijd is, voeg middernacht toe (lokale tijd)
-  let normalized = dateStr;
-  if (!dateStr.includes('T')) {
-    normalized += 'T00:00';
-  }
-  const date = new Date(normalized);
-  // Controleer of de datum geldig is
-  if (isNaN(date.getTime())) {
-    return null;
-  }
-  return date;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
 }
 
 /**
@@ -91,7 +81,6 @@ router.patch("/feed-items/:id", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]
       }
     }
 
-    // low-stock calendar creation
     const before = await prisma.feedItem.findUnique({ where: { id } });
     if (!before) return res.status(404).json({ error: "Feed item not found" });
 
@@ -105,10 +94,8 @@ router.patch("/feed-items/:id", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]
       },
     });
 
-    // crude threshold example; improve tomorrow if needed
     const threshold = 5000;
 
-    // only trigger when it crosses from above threshold to at/below threshold
     if (
       stockGrams !== undefined &&
       before.stockGrams > threshold &&
@@ -172,9 +159,9 @@ router.post("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asy
       return res.status(400).json({ error: "feedItemId must be an integer" });
     }
 
-    const movementDate = parseDateInput(date);
+    const movementDate = toUTCDateOnly(date);
     if (!movementDate) {
-      return res.status(400).json({ error: "date must be in format YYYY-MM-DD or YYYY-MM-DDTHH:mm" });
+      return res.status(400).json({ error: "date must be in format YYYY-MM-DD" });
     }
 
     const delta = Number(deltaGrams);
@@ -193,7 +180,7 @@ router.post("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asy
       const movement = await tx.inventoryMovement.create({
         data: {
           feedItemId: fId,
-          date: movementDate, // nu een Date-object
+          date: movementDate,
           deltaGrams: Math.round(delta),
           reason: reason.trim(),
           userId: req.user.userId,
@@ -226,8 +213,7 @@ router.post("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asy
     res.status(201).json(result);
   } catch (err) {
     console.error(err);
-    // Stuur de foutmelding naar de client voor debugging (tijdelijk)
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Server error" });
   }
 });
 
@@ -247,9 +233,9 @@ router.get("/movements", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), asyn
     }
 
     if (date !== undefined) {
-      const movementDate = parseDateInput(date);
+      const movementDate = toUTCDateOnly(date);
       if (!movementDate) {
-        return res.status(400).json({ error: "date must be YYYY-MM-DD or YYYY-MM-DDTHH:mm" });
+        return res.status(400).json({ error: "date must be YYYY-MM-DD" });
       }
       where.date = movementDate;
     }
