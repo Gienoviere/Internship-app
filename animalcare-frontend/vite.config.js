@@ -1,17 +1,14 @@
-import { defineConfig } from 'vite';
-import { createHtmlPlugin } from 'vite-plugin-html';
+import { defineConfig } from "vite";
 
 export default defineConfig({
-  plugins: [
-    createHtmlPlugin({
-      minify: false,
-      pages: [
-        {
-          entry: 'src/inventory/index.html',
-          filename: 'inventory/index.html',
-          template: 'src/inventory/index.html',
-        }
-      ]
-    })
-  ]
+  build: {
+    rollupOptions: {
+      input: {
+        main: new URL("./index.html", import.meta.url).pathname,
+        tasks: new URL("./Tasks/tasks.html", import.meta.url).pathname,
+        observations: new URL("./Observations/Observations.html", import.meta.url).pathname,
+        users: new URL("./AccountCreation/users.html", import.meta.url).pathname,
+      },
+    },
+  },
 });
