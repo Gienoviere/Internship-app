@@ -13,7 +13,7 @@ export default defineConfig({
         tasks: resolve(__dirname, "Tasks/tasks.html"),
         observations: resolve(__dirname, "Observations/Observations.html"),
         users: resolve(__dirname, "AccountCreation/users.html"),
-      },
-    },
-  },
+      }
+    }
+  }
 });
