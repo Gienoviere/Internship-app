@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AnimalCare · Manual</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <style>
+    [contenteditable="true"] {
+      background-color: #fff3cd;
+      border: 1px dashed #ffc107;
+      padding: 0.25rem 0.5rem;
+      border-radius: 0.375rem;
+      outline: none;
+    }
+    [contenteditable="true"]:focus {
+      background-color: #fff9e6;
+      border-color: #b8860b;
+    }
+  </style>
+</head>
+<body class="bg-body-tertiary">
+
+  <!-- Navbar placeholder -->
+  <div id="navbar-placeholder"></div>
+
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar placeholder -->
+      <div id="sidebar-placeholder" class="col-lg-2"></div>
+
+      <!-- Inhoud manual-pagina -->
+      <main class="col-12 col-lg-10 px-3 px-md-4 py-3">
+        <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
+          <h1 class="h3 mb-0" id="manualTitle">Manual</h1>
+          <button class="btn btn-outline-secondary btn-sm" id="toggleEditBtn" title="Bewerkmodus aan/uit">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-outline-success btn-sm d-none" id="saveEditBtn" title="Wijzigingen opslaan">
+            <i class="bi bi-check-lg"></i> Opslaan
+          </button>
+          <button class="btn btn-outline-danger btn-sm d-none" id="cancelEditBtn" title="Annuleren">
+            <i class="bi bi-x-lg"></i>
+          </button>
+          <span id="saveStatus" class="small text-muted"></span>
+        </div>
+
+        <div id="manualContent">
+          <p id="manualText">Laden...</p>
+          <!-- Je kunt hier meer bewerkbare elementen toevoegen, elk met een uniek id -->
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Footer placeholder -->
+  <div id="footer-placeholder"></div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/src/js/include.js"></script>
+
+  <!-- Bewerkfunctionaliteit met API -->
+  <script>
+    (function() {
+      // 🔧 PAS DIT AAN ALS JE BACKEND OP EEN ANDERE POORT DRAAIT
+      const API_URL = 'http://localhost:3001/api/manual';
+
+      // Elementen
+      const titleEl = document.getElementById('manualTitle');
+      const textEl = document.getElementById('manualText');
+      const toggleBtn = document.getElementById('toggleEditBtn');
+      const saveBtn = document.getElementById('saveEditBtn');
+      const cancelBtn = document.getElementById('cancelEditBtn');
+      const statusEl = document.getElementById('saveStatus');
+
+      // Oorspronkelijke teksten (voor annuleren)
+      let originalTitle = '';
+      let originalText = '';
+
+      // Data ophalen van de server
+      async function loadFromServer() {
+        try {
+          const response = await fetch(API_URL);
+          if (!response.ok) throw new Error('Netwerkfout');
+          const data = await response.json();
+          titleEl.innerText = data.title || 'Manual';
+          textEl.innerText = data.main_text || 'Hier komt de handleiding...';
+          originalTitle = titleEl.innerText;
+          originalText = textEl.innerText;
+        } catch (err) {
+          console.error(err);
+          titleEl.innerText = 'Manual';
+          textEl.innerText = 'Kon gegevens niet laden.';
+        }
+      }
+
+      // Bewerkmodus inschakelen
+      function enableEditMode() {
+        titleEl.contentEditable = true;
+        textEl.contentEditable = true;
+        titleEl.focus();
+        toggleBtn.classList.add('d-none');
+        saveBtn.classList.remove('d-none');
+        cancelBtn.classList.remove('d-none');
+        statusEl.innerText = '';
+      }
+
+      // Bewerkmodus uitschakelen (zonder opslaan)
+      function disableEditMode(restore = true) {
+        titleEl.contentEditable = false;
+        textEl.contentEditable = false;
+        toggleBtn.classList.remove('d-none');
+        saveBtn.classList.add('d-none');
+        cancelBtn.classList.add('d-none');
+        if (restore) {
+          titleEl.innerText = originalTitle;
+          textEl.innerText = originalText;
+        }
+        statusEl.innerText = '';
+      }
+
+      // Wijzigingen opslaan naar server
+      async function saveChanges() {
+        const updatedData = {
+          title: titleEl.innerText,
+          main_text: textEl.innerText
+        };
+
+        statusEl.innerText = 'Bezig met opslaan...';
+
+        try {
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+          });
+
+          if (!response.ok) throw new Error('Opslaan mislukt');
+
+          // Bijwerken van originelen
+          originalTitle = titleEl.innerText;
+          originalText = textEl.innerText;
+          disableEditMode(false); // bewerkmodus uitschakelen zonder terug te zetten
+          statusEl.innerText = 'Opgeslagen!';
+          setTimeout(() => { statusEl.innerText = ''; }, 2000);
+        } catch (err) {
+          console.error(err);
+          statusEl.innerText = 'Fout bij opslaan.';
+        }
+      }
+
+      // Event listeners
+      toggleBtn.addEventListener('click', enableEditMode);
+      saveBtn.addEventListener('click', saveChanges);
+      cancelBtn.addEventListener('click', () => disableEditMode(true));
+
+      // Start
+      loadFromServer();
+
+      // Waarschuwing bij verlaten pagina met onopgeslagen wijzigingen
+      window.addEventListener('beforeunload', function(e) {
+        if (titleEl.contentEditable === 'true' || textEl.contentEditable === 'true') {
+          e.preventDefault();
+          e.returnValue = '';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
