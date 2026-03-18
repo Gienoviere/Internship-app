@@ -15,9 +15,9 @@ async function loadPartial(elementId, filePath) {
 // Na het laden van alle partials, markeer de actieve link in de sidebar
 async function loadAllPartials() {
   await Promise.all([
-    loadPartial('navbar-placeholder', '/src/partials/navbar.html'),
-    loadPartial('sidebar-placeholder', '/src/partials/sidebar.html'),
-    loadPartial('footer-placeholder', '/src/partials/footer.html')
+    loadPartial('navbar-placeholder', '/partials/navbar.html'),
+    loadPartial('sidebar-placeholder', '/partials/sidebar.html'),
+    loadPartial('footer-placeholder', '/partials/footer.html')
   ]);
 
   // Markeer de actieve link op basis van de huidige URL
