@@ -1,19 +1,14 @@
 import { defineConfig } from "vite";
-import { resolve } from "path";
-import { fileURLToPath } from "url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, "index.html"),
-        tasks: resolve(__dirname, "Tasks/tasks.html"),
-        observations: resolve(__dirname, "Observations/Observations.html"),
-        users: resolve(__dirname, "AccountCreation/users.html"),
-      }
-    }
-  }
+        main: new URL("./index.html", import.meta.url).pathname,
+        tasks: new URL("./Tasks/tasks.html", import.meta.url).pathname,
+        observations: new URL("./Observations/Observations.html", import.meta.url).pathname,
+        users: new URL("./AccountCreation/users.html", import.meta.url).pathname,
+      },
+    },
+  },
 });
