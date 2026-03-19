@@ -2,358 +2,474 @@ import { isoToday, api } from "./api.js";
 import { state } from "./state.js";
 import { wireQuickLogShared } from "./quick-log.js";
 
-function $(id) {
-  return document.getElementById(id);
+const api = {
+  async me() {
+    const res = await fetch('/auth/me', { credentials: 'include' });
+    if (!res.ok) throw new Error('Failed to load user');
+    return res.json();
+  },
+  async getToday(date) {
+    const res = await fetch(`/tasks/today?date=${encodeURIComponent(date)}`, { credentials: 'include' });
+    if (!res.ok) throw new Error(await readError(res));
+    return res.json();
+  },
+  async createTask(payload) {
+    const res = await fetch('/tasks', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await readError(res));
+    return res.json();
+  },
+  async createLog(payload) {
+    const res = await fetch('/daily-logs', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await readError(res));
+    return res.json();
+  },
+  async updateLog(id, payload) {
+    const res = await fetch(`/daily-logs/${id}`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await readError(res));
+    return res.json();
+  }
+};
+
+const state = {
+  me: null,
+  selectedDate: todayDateString(),
+  tasks: [],
+  categoryFilter: '',
+};
+
+const els = {
+  userRoleBadge: document.getElementById('userRoleBadge'),
+  globalDate: document.getElementById('globalDate3'),
+  btnRefresh: document.getElementById('btnRefresh3'),
+  taskSummary: document.getElementById('taskSummary3'),
+  taskGroups: document.getElementById('taskGroups3'),
+  categoryFilter: document.getElementById('categoryFilter3'),
+  alertBox: document.getElementById('alertBox3'),
+  quickAnimalCategory: document.getElementById('quickAnimalCategory3'),
+  quickLogTask: document.getElementById('quickLogTask3'),
+  quickLogCustomToggle: document.getElementById('quickLogCustomToggle3'),
+  quickExistingTaskFields: document.getElementById('quickExistingTaskFields3'),
+  quickCustomTaskFields: document.getElementById('quickCustomTaskFields3'),
+  quickLogPhoto: document.getElementById('quickLogPhoto3'),
+  quickLogPhotoPreview: document.getElementById('quickLogPhotoPreview3'),
+  btnQuickLogSubmit: document.getElementById('btnQuickLogSubmit'),
+  btnCreateTask: document.getElementById('btnCreateTask3'),
+  logPhoto: document.getElementById('logPhoto3'),
+  logPhotoPreview: document.getElementById('logPhotoPreview3'),
+  btnSaveLog: document.getElementById('btnSaveLog3'),
+};
+
+init().catch((err) => showAlert(err.message || 'Failed to load page', 'danger'));
+
+async function init() {
+  wireEvents();
+  state.me = await api.me();
+  els.userRoleBadge.textContent = state.me.role || 'Logged in';
+  els.globalDate.value = state.selectedDate;
+  await refresh();
 }
 
-function setAlert(type, msg) {
-  const box = $("alertBox3");
-  if (!box) return;
-  box.className = `alert alert-${type}`;
-  box.textContent = msg;
-  box.classList.remove("d-none");
-  setTimeout(() => box.classList.add("d-none"), 4000);
+function wireEvents() {
+  els.btnRefresh?.addEventListener('click', refresh);
+  els.globalDate?.addEventListener('change', async () => {
+    state.selectedDate = els.globalDate.value || todayDateString();
+    await refresh();
+  });
+  els.categoryFilter?.addEventListener('change', () => {
+    state.categoryFilter = els.categoryFilter.value;
+    renderTasks();
+  });
+  els.quickAnimalCategory?.addEventListener('change', fillQuickTaskOptions);
+  els.quickLogCustomToggle?.addEventListener('change', toggleQuickCustomMode);
+  els.btnCreateTask?.addEventListener('click', onCreateTask);
+  els.btnQuickLogSubmit?.addEventListener('click', onQuickLogSubmit);
+  els.btnSaveLog?.addEventListener('click', onSaveLog);
+  els.logPhoto?.addEventListener('change', () => previewFile(els.logPhoto, els.logPhotoPreview));
+  els.quickLogPhoto?.addEventListener('change', () => previewFile(els.quickLogPhoto, els.quickLogPhotoPreview));
+
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-action="open-log"]');
+    if (!button) return;
+    const taskId = Number(button.dataset.taskId);
+    openLogModal(taskId);
+  });
 }
 
-function setRoleBadge() {
-  const badge = $("userRoleBadge");
-  if (!badge) return;
+async function refresh() {
+  const payload = await api.getToday(state.selectedDate);
+  state.tasks = payload.tasks || [];
+  fillCategoryFilters();
+  renderSummary();
+  renderTasks();
+}
 
-  if (!state.currentUser) {
-    badge.innerHTML = `<span class="badge bg-secondary">Not logged in</span>`;
+function fillCategoryFilters() {
+  const categories = uniqueCategories(state.tasks);
+  const current = state.categoryFilter;
+  replaceOptions(els.categoryFilter, [{ value: '', label: 'All animal categories' }, ...categories.map(c => ({ value: c, label: c }))], current);
+  replaceOptions(els.quickAnimalCategory, [{ value: '', label: 'Select animal category' }, ...categories.map(c => ({ value: c, label: c }))], '');
+}
+
+function fillQuickTaskOptions() {
+  const category = els.quickAnimalCategory.value;
+  const tasks = state.tasks.filter((task) => !category || normalized(task.animalCategory || task.category) === normalized(category));
+  replaceOptions(
+    els.quickLogTask,
+    [{ value: '', label: 'Select a task' }, ...tasks.map(task => ({ value: task.taskId, label: task.taskName }))],
+    ''
+  );
+}
+
+function toggleQuickCustomMode() {
+  const custom = els.quickLogCustomToggle.checked;
+  els.quickExistingTaskFields.classList.toggle('d-none', custom);
+  els.quickCustomTaskFields.classList.toggle('d-none', !custom);
+}
+
+function renderSummary() {
+  const total = state.tasks.length;
+  const logged = state.tasks.filter(t => t.logged).length;
+  const completed = state.tasks.filter(t => t.completed).length;
+  const categories = uniqueCategories(state.tasks).length;
+
+  els.taskSummary.innerHTML = [
+    summaryCard('Tasks', total, 'bi-list-task'),
+    summaryCard('Logged', logged, 'bi-pencil-square'),
+    summaryCard('Completed', completed, 'bi-check2-circle'),
+    summaryCard('Animal categories', categories, 'bi-tags'),
+  ].join('');
+}
+
+function renderTasks() {
+  const filtered = state.tasks.filter((task) => {
+    if (!state.categoryFilter) return true;
+    return normalized(task.animalCategory || task.category) === normalized(state.categoryFilter);
+  });
+
+  if (!filtered.length) {
+    els.taskGroups.innerHTML = '<div class="alert alert-light border">No tasks found for this filter.</div>';
     return;
   }
 
-  const role = state.currentUser.role;
-  const cls = role === "ADMIN" ? "danger" : role === "SUPERVISOR" ? "warning" : "info";
-  badge.innerHTML = `<span class="badge bg-${cls}">${role}</span>`;
+  const grouped = filtered.reduce((acc, task) => {
+    const category = task.animalCategory || task.category || 'Uncategorized';
+    if (!acc[category]) acc[category] = [];
+    acc[category].push(task);
+    return acc;
+  }, {});
+
+  els.taskGroups.innerHTML = Object.entries(grouped)
+    .map(([category, tasks]) => renderCategorySection(category, tasks))
+    .join('');
 }
 
-function applyRoleVisibility() {
-  const role = state.currentUser?.role;
-
-  document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only").forEach(el => {
-    el.classList.add("d-none");
-  });
-
-  if (!role) return;
-
-  if (role === "ADMIN") {
-    document.querySelectorAll(".admin-only,.supervisor-only,.caretaker-only").forEach(el => {
-      el.classList.remove("d-none");
-    });
-    return;
-  }
-
-  if (role === "SUPERVISOR") {
-    document.querySelectorAll(".supervisor-only,.caretaker-only").forEach(el => {
-      el.classList.remove("d-none");
-    });
-    return;
-  }
-
-  document.querySelectorAll(".caretaker-only").forEach(el => {
-    el.classList.remove("d-none");
-  });
+function renderCategorySection(category, tasks) {
+  const completed = tasks.filter(task => task.completed).length;
+  return `
+    <section class="card shadow-sm">
+      <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div>
+            <h5 class="mb-1">${escapeHtml(category)}</h5>
+            <div class="text-muted small">${completed}/${tasks.length} completed</div>
+          </div>
+          <span class="badge rounded-pill text-bg-light category-pill">Animal category</span>
+        </div>
+        <div class="row g-3">
+          ${tasks.map(renderTaskCard).join('')}
+        </div>
+      </div>
+    </section>
+  `;
 }
 
-async function loadTasks(date) {
-  const data = await api(`/tasks/today?date=${date}`);
-  const tasks = data.tasks || [];
+function renderTaskCard(task) {
+  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const subtaskBadges = subtasks.length
+    ? subtasks.map((sub) => {
+        const done = Array.isArray(task.completedSubtasks) && task.completedSubtasks.includes(sub);
+        return `<span class="badge rounded-pill text-bg-light border me-1 mb-1 subtask-chip ${done ? 'done' : ''}">${escapeHtml(sub)}</span>`;
+      }).join('')
+    : '<span class="text-muted small">No subcomponents yet</span>';
 
-  const tbody = $("tasksTable3");
-  if (!tbody) return;
+  const photoHtml = task.photoUrl
+    ? `<img src="${escapeAttr(task.photoUrl)}" class="img-fluid rounded border mt-2" alt="Task photo">`
+    : '<div class="small text-muted mt-2">No photo uploaded yet</div>';
 
-  tbody.innerHTML = "";
-
-  tasks.forEach((t) => {
-    const status = t.logged
-      ? (t.completed ? "Logged" : "Logged (incomplete)")
-      : "Not logged";
-
-    const badgeClass = t.logged && t.completed
-      ? "text-bg-success"
-      : t.logged
-      ? "text-bg-warning"
-      : "text-bg-secondary";
-
-    const row = document.createElement("tr");
-    row.style.cursor = "pointer";
-    row.addEventListener("click", () => {
-    const button = row.querySelector("[data-open-log]");
-    if (button) button.click();
-    });
-
-    row.innerHTML = `
-      <td><span class="fw-semibold">${t.taskName}</span></td>
-      <td><span class="badge bg-light text-dark border">${t.category || ""}</span></td>
-      <td>
-        <button
-          type="button"
-          class="btn btn-sm ${t.logged ? "btn-outline-dark" : "btn-outline-primary"}"
-          data-open-log='${JSON.stringify({
-            taskId: t.taskId,
-            taskName: t.taskName,
-            logId: t.logId,
-            quantityGrams: t.quantityGrams,
-            notes: t.notes,
-            completed: t.completed,
-            logged: t.logged
-          }).replace(/'/g, "&apos;")}'>
-          <span class="badge ${badgeClass}">${status}</span>
-        </button>
-      </td>
-      <td>
-        <button
-          type="button"
-          class="btn btn-sm btn-primary"
-          data-open-log='${JSON.stringify({
-            taskId: t.taskId,
-            taskName: t.taskName,
-            logId: t.logId,
-            quantityGrams: t.quantityGrams,
-            notes: t.notes,
-            completed: t.completed,
-            logged: t.logged
-          }).replace(/'/g, "&apos;")}'>
-          ${t.logged ? "Edit log" : "Add log"}
-        </button>
-      </td>
-    `;
-    tbody.appendChild(row);
-  });
-
-  tbody.querySelectorAll("[data-open-log]").forEach((btn) => {
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-
-    const raw = btn.getAttribute("data-open-log");
-    const item = JSON.parse(raw);
-
-    if ($("logTaskName3")) $("logTaskName3").value = item.taskName || "";
-    if ($("logTaskId3")) $("logTaskId3").value = item.taskId || "";
-    if ($("logId3")) $("logId3").value = item.logId || "";
-    if ($("logQty3")) $("logQty3").value = item.quantityGrams ?? "";
-    if ($("logNotes3")) $("logNotes3").value = item.notes ?? "";
-    if ($("logCompleted3")) $("logCompleted3").checked = item.logged ? Boolean(item.completed) : true;
-
-    const modalEl = $("logModal3");
-    if (!modalEl || !window.bootstrap) {
-      setAlert("danger", "Log modal is not available.");
-      return;
-    }
-
-    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-    modal.show();
-  });
-});
-}
-
-async function saveLogFromModal() {
-  const date = $("globalDate3")?.value || isoToday();
-  const taskId = Number($("logTaskId3")?.value);
-  const logId = $("logId3")?.value ? Number($("logId3").value) : null;
-  const qtyRaw = $("logQty3")?.value?.trim() || "";
-  const notes = $("logNotes3")?.value?.trim() || "";
-  const completed = Boolean($("logCompleted3")?.checked);
-
-  if (!taskId) {
-    setAlert("danger", "Task ID is missing.");
-    return;
-  }
-
-  let quantityGrams = null;
-  if (qtyRaw !== "") {
-    quantityGrams = Number(qtyRaw);
-    if (!Number.isFinite(quantityGrams) || quantityGrams < 0) {
-      setAlert("danger", "Quantity must be a valid positive number.");
-      return;
-    }
-  }
-
-  if (logId) {
-    await api(`/daily-logs/${logId}`, {
-      method: "PATCH",
-      json: {
-        completed,
-        quantityGrams,
-        notes
-      }
-    });
-    setAlert("success", "Log updated.");
-  } else {
-    await api("/daily-logs", {
-      method: "POST",
-      json: {
-        date,
-        taskId,
-        completed,
-        quantityGrams,
-        notes
-      }
-    });
-    setAlert("success", "Log created.");
-  }
-
-  const modalEl = $("logModal3");
-  if (modalEl && window.bootstrap) {
-    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
-  }
-
-  await refreshTasksPage();
-}
-
-async function loadSupervisorQueue(date) {
-  const wrap = $("supQueue3");
-  const kpi = $("supPendingCount3");
-  if (!wrap) return;
-
-  try {
-    const logs = await api(`/supervisor/logs?date=${date}&status=PENDING`);
-
-    if (kpi) kpi.textContent = String(logs.length);
-
-    const top = (logs || []).slice(0, 10);
-
-    wrap.innerHTML = top.length
-      ? top.map((l) => `
-        <div class="card border-warning mb-2">
-          <div class="card-body p-2">
-            <div class="d-flex justify-content-between align-items-start">
-              <div>
-                <span class="fw-semibold">${l.task?.name || "Task"}</span>
-                <span class="badge bg-warning ms-2">PENDING</span>
-              </div>
-              <small class="text-muted">#${l.id}</small>
+  return `
+    <div class="col-12 col-xl-6">
+      <div class="card task-card h-100 border ${task.completed ? 'border-success' : ''}">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            <div>
+              <h6 class="mb-1">${escapeHtml(task.taskName)}</h6>
+              <div class="small text-muted">${escapeHtml(task.feedItemName || 'No inventory item linked')}</div>
             </div>
+            <span class="badge ${task.completed ? 'text-bg-success' : task.logged ? 'text-bg-warning' : 'text-bg-secondary'}">
+              ${task.completed ? 'Completed' : task.logged ? 'Logged' : 'Open'}
+            </span>
+          </div>
 
-            <div class="small text-muted mt-1">
-              <i class="bi bi-person me-1"></i>${l.user?.name || l.user?.email || "—"} ·
-              <i class="bi bi-box me-1"></i>${l.quantityGrams ?? "—"}g
-            </div>
+          <p class="text-muted small mb-2">${escapeHtml(task.description || 'No description added yet.')}</p>
 
-            ${l.notes ? `<div class="small mt-1">${l.notes}</div>` : ""}
+          <div class="mb-2">
+            <div class="small fw-semibold mb-1">Subcomponents</div>
+            ${subtaskBadges}
+          </div>
 
-            <div class="d-flex gap-2 mt-2">
-              <button class="btn btn-sm btn-success" data-approve="${l.id}">
-                Approve
-              </button>
-              <button class="btn btn-sm btn-outline-danger" data-reject="${l.id}">
-                Reject
-              </button>
-            </div>
+          <div class="small mb-2"><strong>Notes:</strong> ${escapeHtml(task.notes || 'None')}</div>
+          <div class="small mb-2"><strong>Quantity:</strong> ${task.quantityGrams ?? '-'} grams</div>
+          ${photoHtml}
+
+          <div class="mt-auto pt-3 d-flex gap-2">
+            <button class="btn btn-primary btn-sm" data-action="open-log" data-task-id="${task.taskId}">${task.logged ? 'Edit log' : 'Log task'}</button>
           </div>
         </div>
-      `).join("")
-      : `<div class="alert alert-secondary small mb-0">
-          No pending logs for this date.
-        </div>`;
+      </div>
+    </div>
+  `;
+}
 
-    wrap.querySelectorAll("[data-approve]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-approve");
-        try {
-          await api(`/supervisor/logs/${id}`, {
-            method: "PATCH",
-            json: {
-              approvalStatus: "APPROVED",
-              supervisorNote: "Checked and confirmed."
-            }
-          });
-          setAlert("success", `Log #${id} approved.`);
-          await refreshTasksPage();
-        } catch (e) {
-          setAlert("danger", e.message);
-        }
-      });
-    });
+function openLogModal(taskId) {
+  const task = state.tasks.find((item) => item.taskId === taskId);
+  if (!task) return;
 
-    wrap.querySelectorAll("[data-reject]").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const id = btn.getAttribute("data-reject");
-        try {
-          await api(`/supervisor/logs/${id}`, {
-            method: "PATCH",
-            json: {
-              approvalStatus: "REJECTED",
-              supervisorNote: "Please correct and resubmit."
-            }
-          });
-          setAlert("warning", `Log #${id} rejected.`);
-          await refreshTasksPage();
-        } catch (e) {
-          setAlert("danger", e.message);
-        }
-      });
-    });
+  document.getElementById('logTaskId3').value = task.taskId;
+  document.getElementById('logId3').value = task.logId || '';
+  document.getElementById('logTaskName3').value = task.taskName || '';
+  document.getElementById('logAnimalCategory3').value = task.animalCategory || task.category || '';
+  document.getElementById('logTaskDescription3').value = task.description || '';
+  document.getElementById('logQty3').value = task.quantityGrams ?? '';
+  document.getElementById('logNotes3').value = task.notes || '';
+  document.getElementById('logCompleted3').checked = Boolean(task.completed);
+  document.getElementById('logSubtasks3').innerHTML = buildSubtaskCheckboxes(task.subtasks, task.completedSubtasks);
+  els.logPhoto.value = '';
+  els.logPhotoPreview.style.display = task.photoUrl ? 'block' : 'none';
+  els.logPhotoPreview.src = task.photoUrl || '';
 
-  } catch (e) {
-    if (kpi) kpi.textContent = "—";
-    wrap.innerHTML = `<div class="alert alert-secondary small mb-0">
-      ${e?.message || "Supervisor queue unavailable."}
-    </div>`;
+  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal3'));
+  modal.show();
+}
+
+async function onSaveLog() {
+  try {
+    const taskId = Number(document.getElementById('logTaskId3').value);
+    const logId = Number(document.getElementById('logId3').value || 0);
+    const photoBase64 = await fileToDataUrl(els.logPhoto);
+    const payload = {
+      date: state.selectedDate,
+      taskId,
+      completed: document.getElementById('logCompleted3').checked,
+      quantityGrams: toNullableNumber(document.getElementById('logQty3').value),
+      notes: document.getElementById('logNotes3').value.trim(),
+      completedSubtasks: checkedValues('#logSubtasks3 input[type="checkbox"]'),
+      photoUrl: photoBase64,
+    };
+
+    if (logId) {
+      await api.updateLog(logId, payload);
+    } else {
+      await api.createLog(payload);
+    }
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal3')).hide();
+    showAlert('Task log saved.', 'success');
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || 'Could not save log', 'danger');
   }
 }
 
-async function refreshTasksPage() {
-  const date = $("globalDate3")?.value || isoToday();
+async function onCreateTask() {
+  try {
+    const payload = {
+      name: document.getElementById('createTaskName3').value.trim(),
+      description: document.getElementById('createTaskDescription3').value.trim(),
+      category: document.getElementById('createAnimalCategory3').value.trim(),
+      animalCategory: document.getElementById('createAnimalCategory3').value.trim(),
+      isDaily: document.getElementById('createTaskDaily3').checked,
+      sortOrder: Number(document.getElementById('createTaskSortOrder3').value || 0),
+      active: document.getElementById('createTaskActive3').checked,
+      photoRequired: document.getElementById('createTaskRequirePhoto3').checked,
+      subtasks: textareaLines(document.getElementById('createTaskSubtasks3').value),
+    };
 
-  const me = await api("/auth/me");
-  console.log("AUTH /auth/me response:", me);
-  state.currentUser = me.user || me;
-  console.log("Resolved currentUser:", state.currentUser);
-  
-  setRoleBadge();
-  applyRoleVisibility();
-
-  await loadTasks(date);
-
-  if (
-    state.currentUser?.role === "SUPERVISOR" ||
-    state.currentUser?.role === "ADMIN"
-  ) {
-    await loadSupervisorQueue(date);
+    await api.createTask(payload);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('createTaskModal')).hide();
+    showAlert('Task created.', 'success');
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || 'Could not create task', 'danger');
   }
 }
 
-document.addEventListener("DOMContentLoaded", async () => {
-  if ($("globalDate3")) $("globalDate3").value = isoToday();
-
-  $("btnRefresh3")?.addEventListener("click", async () => {
-    try {
-      await refreshTasksPage();
-    } catch (e) {
-      setAlert("danger", e.message);
-    }
-  });
-
-  $("globalDate3")?.addEventListener("change", async () => {
-    try {
-      await refreshTasksPage();
-    } catch (e) {
-      setAlert("danger", e.message);
-    }
-  });
-
-  $("btnLogout3")?.addEventListener("click", () => {
-    localStorage.removeItem("token");
-    window.location.reload();
-  });
-
+async function onQuickLogSubmit() {
   try {
-    await refreshTasksPage();
-  } catch (e) {
-    setAlert("danger", e.message);
+    let taskId = Number(els.quickLogTask.value || 0);
+
+    if (els.quickLogCustomToggle.checked) {
+      const newTask = await api.createTask({
+        name: document.getElementById('quickCustomTaskName3').value.trim(),
+        description: document.getElementById('quickCustomTaskDescription3').value.trim(),
+        category: document.getElementById('quickCustomAnimalCategory3').value.trim(),
+        animalCategory: document.getElementById('quickCustomAnimalCategory3').value.trim(),
+        isDaily: true,
+        active: true,
+        sortOrder: 0,
+        subtasks: textareaLines(document.getElementById('quickCustomSubtasks3').value),
+      });
+      taskId = newTask.id;
+    }
+
+    if (!taskId) throw new Error('Select or create a task first.');
+
+    await api.createLog({
+      date: state.selectedDate,
+      taskId,
+      completed: document.getElementById('quickLogCompleted3').checked,
+      quantityGrams: toNullableNumber(document.getElementById('quickLogQty3').value),
+      notes: document.getElementById('quickLogNotes3').value.trim(),
+      completedSubtasks: [],
+      photoUrl: await fileToDataUrl(els.quickLogPhoto),
+    });
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('quickLogModal')).hide();
+    showAlert('Quick log added.', 'success');
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || 'Could not add quick log', 'danger');
+  }
+}
+
+function buildSubtaskCheckboxes(subtasks = [], completed = []) {
+  if (!Array.isArray(subtasks) || !subtasks.length) {
+    return '<div class="text-muted small">No subcomponents added for this task.</div>';
   }
 
-  $("btnSaveLog3")?.addEventListener("click", async () => {
+  return subtasks.map((subtask, index) => `
+    <label class="form-check border rounded p-2">
+      <input class="form-check-input me-2" type="checkbox" value="${escapeAttr(subtask)}" ${completed?.includes(subtask) ? 'checked' : ''}>
+      <span class="form-check-label">${escapeHtml(subtask)}</span>
+    </label>
+  `).join('');
+}
+
+function checkedValues(selector) {
+  return [...document.querySelectorAll(selector)].filter(el => el.checked).map(el => el.value);
+}
+
+function replaceOptions(select, options, selected) {
+  if (!select) return;
+  select.innerHTML = options.map((option) => `<option value="${escapeAttr(option.value)}">${escapeHtml(option.label)}</option>`).join('');
+  if (selected !== undefined) select.value = selected;
+}
+
+function summaryCard(label, value, icon) {
+  return `
+    <div class="col-12 col-md-6 col-xl-3">
+      <div class="card shadow-sm h-100">
+        <div class="card-body d-flex align-items-center justify-content-between">
+          <div>
+            <div class="text-muted small">${escapeHtml(label)}</div>
+            <div class="fs-4 fw-semibold">${value}</div>
+          </div>
+          <i class="bi ${icon} fs-2 text-muted"></i>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function uniqueCategories(tasks) {
+  return [...new Set(tasks.map(t => t.animalCategory || t.category).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+
+function textareaLines(text) {
+  return String(text || '').split('\n').map(s => s.trim()).filter(Boolean);
+}
+
+function toNullableNumber(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function normalized(value) {
+  return String(value || '').trim().toLowerCase();
+}
+
+function todayDateString() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function showAlert(message, type = 'info') {
+  els.alertBox.className = `alert alert-${type}`;
+  els.alertBox.textContent = message;
+  els.alertBox.classList.remove('d-none');
+  window.clearTimeout(showAlert._timer);
+  showAlert._timer = window.setTimeout(() => els.alertBox.classList.add('d-none'), 3500);
+}
+
+async function readError(res) {
   try {
-    await saveLogFromModal();
-  } catch (e) {
-    setAlert("danger", e.message || "Failed to save log.");
+    const data = await res.json();
+    return data.error || 'Request failed';
+  } catch {
+    return 'Request failed';
   }
+}
+
+function previewFile(input, img) {
+  const file = input?.files?.[0];
+  if (!file) {
+    img.style.display = 'none';
+    img.removeAttribute('src');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    img.src = reader.result;
+    img.style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function fileToDataUrl(input) {
+  const file = input?.files?.[0];
+  if (!file) return Promise.resolve(undefined);
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
   });
+}
 
-  wireQuickLogShared(refreshTasksPage);
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char]));
+}
 
-});
+function escapeAttr(value) {
+  return escapeHtml(value);
+}

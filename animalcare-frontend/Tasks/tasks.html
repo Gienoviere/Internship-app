@@ -1,4 +1,3 @@
-<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -6,10 +5,21 @@
   <title>AnimalCare - Tasks</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-  
+  <style>
+    .task-card { border-radius: 1rem; }
+    .subtask-chip.done { text-decoration: line-through; opacity: .7; }
+    .photo-preview {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: .75rem;
+      border: 1px solid #dee2e6;
+      display: none;
+    }
+    .category-pill { white-space: nowrap; }
+  </style>
 </head>
 <body>
-
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
       <span class="navbar-brand fw-semibold">AnimalCare</span>
@@ -24,79 +34,51 @@
     <div class="row">
       <aside class="col-md-3 col-lg-2 bg-white border-end min-vh-100">
         <div class="py-3">
-            <ul class="nav nav-pills flex-column gap-1" id="sidebarNav">
+          <ul class="nav nav-pills flex-column gap-1" id="sidebarNav">
             <li class="nav-item">
-                <a class="nav-link" href="/index.html" data-page="index.html">
-                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="tasks.html" data-page="tasks.html">
-                <i class="bi bi-list-check me-2"></i>Tasks
-                </a>
-            </li>
-
-            <li class="nav-item">
-                <a class="nav-link" href="/inventory/index.html" data-page="index.html">
-                <i class="bi bi-box-seam me-2"></i>Inventory
-                </a>
+              <a class="nav-link" href="/index.html" data-page="index.html"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link active" href="/Observations/Observations.html" data-page="observations.html">
-                <i class="bi bi-journal-text me-2"></i>Observations
-              </a>
+              <a class="nav-link" href="tasks.html" data-page="tasks.html"><i class="bi bi-list-check me-2"></i>Tasks</a>
             </li>
-
             <li class="nav-item">
-              <a class="nav-link text-dark" href="/manual/index.html">
-                <i class="bi bi-book me-2"></i>Manual
-              </a>
+              <a class="nav-link" href="/inventory/index.html" data-page="inventory.html"><i class="bi bi-box-seam me-2"></i>Inventory</a>
             </li>
-
+            <li class="nav-item">
+              <a class="nav-link text-dark" href="/Observations/Observations.html" data-page="observations.html"><i class="bi bi-journal-text me-2"></i>Observations</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link text-dark" href="/manual/index.html"><i class="bi bi-book me-2"></i>Manual</a>
+            </li>
             <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Snel acties</h6></li>
             <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Snelle log</a></li>
-            </ul>
+            <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#createTaskModal"><i class="bi bi-clipboard-plus"></i> Nieuwe taak</a></li>
+          </ul>
         </div>
-        </aside>
+      </aside>
 
       <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 pt-3">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
           <div>
-            <h1 class="h2 mb-0">Tasks</h1>
-            <p class="text-muted mb-0">Daily task logging and supervisor approvals</p>
+            <h1 class="h2 mb-0">Daily Tasks</h1>
+            <p class="text-muted mb-0">Grouped by animal category, with subtasks, descriptions, photos and custom task logging.</p>
           </div>
 
-          <div class="d-flex gap-2 align-items-center">
+          <div class="d-flex flex-wrap gap-2 align-items-center">
             <input type="date" class="form-control form-control-sm" id="globalDate3" style="max-width:180px;">
+            <select class="form-select form-select-sm" id="categoryFilter3" style="max-width:220px;">
+              <option value="">All animal categories</option>
+            </select>
             <button class="btn btn-outline-primary btn-sm" id="btnRefresh3">Refresh</button>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createTaskModal">Create task</button>
           </div>
         </div>
 
         <div id="alertBox3" class="alert d-none"></div>
+        <div id="taskSummary3" class="row g-3 mb-3"></div>
+        <div id="taskGroups3" class="d-grid gap-3"></div>
 
-        <!-- Tasks -->
-        <div class="card shadow-sm mb-3">
-          <div class="card-body">
-            <h5 class="mb-3"><i class="bi bi-list-task me-2"></i>Today's tasks</h5>
-            <div class="table-responsive">
-              <table class="table table-sm align-middle">
-                <thead>
-                  <tr>
-                    <th>Task</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th style="width: 260px;">Log</th>
-                  </tr>
-                </thead>
-                <tbody id="tasksTable3"></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- Supervisor queue -->
-        <div class="card shadow-sm supervisor-only">
+        <div class="card shadow-sm supervisor-only mt-3">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <div>
@@ -105,159 +87,231 @@
               </div>
               <span class="badge bg-warning text-dark" id="supPendingCount3">0</span>
             </div>
-
             <div id="supQueue3"></div>
           </div>
         </div>
-
-        
       </main>
     </div>
   </div>
-  
+
   <div class="modal fade" id="logModal3" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Task log</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-2">
-          <label class="form-label">Task</label>
-          <input type="text" class="form-control" id="logTaskName3" readonly>
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Log daily task</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-
-        <div class="mb-2">
-          <label class="form-label">Quantity (grams)</label>
-          <input type="number" min="0" class="form-control" id="logQty3" placeholder="Enter grams">
-        </div>
-
-        <div class="mb-2">
-          <label class="form-label">Notes</label>
-          <textarea class="form-control" id="logNotes3" rows="3" placeholder="Add notes"></textarea>
-        </div>
-
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="logCompleted3">
-          <label class="form-check-label" for="logCompleted3">
-            Mark as completed
-          </label>
-        </div>
-
-        <input type="hidden" id="logTaskId3">
-        <input type="hidden" id="logId3">
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="btnSaveLog3">Save log</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="modal fade" id="logModal3" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Task log</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-
-      <div class="modal-body">
-        <div class="mb-3">
-          <label for="logTaskName3" class="form-label">Task</label>
-          <input type="text" class="form-control" id="logTaskName3" readonly>
-        </div>
-
-        <div class="mb-3">
-          <label for="logQty3" class="form-label">Quantity (grams)</label>
-          <input type="number" class="form-control" id="logQty3" min="0" placeholder="Enter quantity">
-        </div>
-
-        <div class="mb-3">
-          <label for="logNotes3" class="form-label">Notes</label>
-          <textarea class="form-control" id="logNotes3" rows="3" placeholder="Add notes"></textarea>
-        </div>
-
-        <div class="form-check">
-          <input class="form-check-input" type="checkbox" id="logCompleted3">
-          <label class="form-check-label" for="logCompleted3">
-            Mark as completed
-          </label>
-        </div>
-
-        <input type="hidden" id="logTaskId3">
-        <input type="hidden" id="logId3">
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="btnSaveLog3">Save log</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- modal of quick logs -->
-   <div class="modal fade" id="quickLogModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Add quick log</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-
-      <div class="modal-body">
-        <form>
-          <div class="mb-3">
-            <label class="form-label">Task</label>
-            <select class="form-select" id="quickLogTask3">
-              <option value="">Select a task</option>
-            </select>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Task</label>
+              <input type="text" class="form-control" id="logTaskName3" readonly>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Animal category</label>
+              <input type="text" class="form-control" id="logAnimalCategory3" readonly>
+            </div>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label">Amount (grams)</label>
-            <input type="number" class="form-control" id="quickLogQty3" min="0">
+          <div class="mt-3">
+            <label class="form-label">Task description</label>
+            <textarea class="form-control" id="logTaskDescription3" rows="3" readonly></textarea>
           </div>
 
-          <div class="mb-3">
+          <div class="mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0">Subcomponents</label>
+              <span class="small text-muted">Tick all completed steps</span>
+            </div>
+            <div id="logSubtasks3" class="vstack gap-2"></div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Quantity (grams)</label>
+              <input type="number" min="0" class="form-control" id="logQty3" placeholder="Enter grams">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Photo</label>
+              <input type="file" class="form-control" id="logPhoto3" accept="image/*">
+            </div>
+          </div>
+
+          <div class="mt-3">
+            <img id="logPhotoPreview3" class="photo-preview" alt="Photo preview">
+          </div>
+
+          <div class="mt-3">
             <label class="form-label">Notes</label>
-            <textarea class="form-control" id="quickLogNotes3" rows="2"></textarea>
+            <textarea class="form-control" id="logNotes3" rows="3" placeholder="Add notes"></textarea>
           </div>
 
-          <div class="form-check">
+          <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="logCompleted3">
+            <label class="form-check-label" for="logCompleted3">Mark full task as completed</label>
+          </div>
+
+          <input type="hidden" id="logTaskId3">
+          <input type="hidden" id="logId3">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btnSaveLog3">Save log</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="quickLogModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add quick log</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="quickLogCustomToggle3">
+            <label class="form-check-label" for="quickLogCustomToggle3">Create and log a custom task instead of choosing an existing one</label>
+          </div>
+
+          <div id="quickExistingTaskFields3">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Animal category</label>
+                <select class="form-select" id="quickAnimalCategory3">
+                  <option value="">Select animal category</option>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Task</label>
+                <select class="form-select" id="quickLogTask3">
+                  <option value="">Select a task</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div id="quickCustomTaskFields3" class="d-none">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Task name</label>
+                <input type="text" class="form-control" id="quickCustomTaskName3" placeholder="Example: Clean rabbit enclosure">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Animal category</label>
+                <input type="text" class="form-control" id="quickCustomAnimalCategory3" placeholder="Example: Rabbits">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" id="quickCustomTaskDescription3" rows="2" placeholder="What needs to be done?"></textarea>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Subcomponents (one per line)</label>
+                <textarea class="form-control" id="quickCustomSubtasks3" rows="4" placeholder="Refresh water&#10;Replace hay&#10;Clean feeding tray"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Amount (grams)</label>
+              <input type="number" class="form-control" id="quickLogQty3" min="0">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Photo</label>
+              <input type="file" class="form-control" id="quickLogPhoto3" accept="image/*">
+            </div>
+            <div class="col-12">
+              <img id="quickLogPhotoPreview3" class="photo-preview" alt="Quick log photo preview">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Notes</label>
+              <textarea class="form-control" id="quickLogNotes3" rows="2"></textarea>
+            </div>
+          </div>
+
+          <div class="form-check mt-3">
             <input type="checkbox" class="form-check-input" id="quickLogCompleted3" checked>
             <label class="form-check-label" for="quickLogCompleted3">Mark as completed</label>
           </div>
-        </form>
-      </div>
-
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button class="btn btn-primary" id="btnQuickLogSubmit">Add</button>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" id="btnQuickLogSubmit">Add</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
+
+  <div class="modal fade" id="createTaskModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Create task</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Task name</label>
+              <input type="text" class="form-control" id="createTaskName3" placeholder="Example: Feed guinea pigs">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Animal category</label>
+              <input type="text" class="form-control" id="createAnimalCategory3" placeholder="Example: Guinea pigs">
+            </div>
+            <div class="col-12">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" id="createTaskDescription3" rows="3"></textarea>
+            </div>
+            <div class="col-12">
+              <label class="form-label">Subcomponents (one per line)</label>
+              <textarea class="form-control" id="createTaskSubtasks3" rows="5" placeholder="Prepare food&#10;Give fresh water&#10;Check enclosure"></textarea>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Sort order</label>
+              <input type="number" class="form-control" id="createTaskSortOrder3" value="0">
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="createTaskDaily3" checked>
+                <label class="form-check-label" for="createTaskDaily3">Daily task</label>
+              </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="createTaskRequirePhoto3">
+                <label class="form-check-label" for="createTaskRequirePhoto3">Photo required</label>
+              </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="createTaskActive3" checked>
+                <label class="form-check-label" for="createTaskActive3">Active</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" id="btnCreateTask3">Create task</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
-        document.addEventListener('DOMContentLoaded', () => {
-        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-        const links = document.querySelectorAll('#sidebarNav .nav-link');
-
-        links.forEach(link => {
-            const page = link.getAttribute('data-page');
-            if (page === currentPage) {
-            link.classList.add('active');
-            } else {
-            link.classList.remove('active');
-            }
-        });
-        });
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script type="module" src="/js/tasks-page.js"></script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const currentPage = window.location.pathname.split('/').pop() || 'index.html';
+      const links = document.querySelectorAll('#sidebarNav .nav-link');
+      links.forEach(link => {
+        const page = link.getAttribute('data-page');
+        link.classList.toggle('active', page === currentPage);
+      });
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script type="module" src="/js/tasks-page.js"></script>
 </body>
 </html>
