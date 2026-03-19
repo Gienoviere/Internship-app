@@ -49,7 +49,7 @@ const state = {
 };
 
 const els = {
-  userRoleBadge: document.getElementById('userRoleBadge'),
+  userRoleBadge: document.getElementById('userRoleBadge3'),
   globalDate: document.getElementById('globalDate3'),
   btnRefresh: document.getElementById('btnRefresh3'),
   taskSummary: document.getElementById('taskSummary3'),
