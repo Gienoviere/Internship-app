@@ -1,7 +1,3 @@
-import { isoToday, api } from "./api.js";
-import { state } from "./state.js";
-import { wireQuickLogShared } from "./quick-log.js";
-
 const api = {
   async me() {
     const res = await fetch('/auth/me', { credentials: 'include' });
