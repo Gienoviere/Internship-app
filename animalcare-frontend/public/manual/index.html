@@ -62,5 +62,163 @@
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="/js/include.js"></script>
+
+  <!-- Bewerkfunctionaliteit met API -->
+  <script>
+    (function() {
+      // 🔧 PAS DIT AAN ALS JE BACKEND OP EEN ANDERE POORT DRAAIT
+      const API_URL = 'http://localhost:3001/manual';
+
+      // Elementen
+      const titleEl = document.getElementById('manualTitle');
+      const textEl = document.getElementById('manualText');
+      const toggleBtn = document.getElementById('toggleEditBtn');
+      const saveBtn = document.getElementById('saveEditBtn');
+      const cancelBtn = document.getElementById('cancelEditBtn');
+      const statusEl = document.getElementById('saveStatus');
+
+      // Oorspronkelijke teksten (voor annuleren)
+      let originalTitle = '';
+      let originalText = '';
+
+      // Data ophalen van de server
+      async function loadFromServer() {
+        try {
+          const response = await fetch(API_URL);
+          if (!response.ok) throw new Error('Netwerkfout');
+          const data = await response.json();
+          titleEl.innerText = data.title || 'Manual';
+          textEl.innerText = data.main_text || 'Hier komt de handleiding...';
+          originalTitle = titleEl.innerText;
+          originalText = textEl.innerText;
+        } catch (err) {
+          console.error(err);
+          titleEl.innerText = 'Manual';
+          textEl.innerText = 'Kon gegevens niet laden.';
+        }
+      }
+
+      // Bewerkmodus inschakelen
+      function enableEditMode() {
+        titleEl.contentEditable = true;
+        textEl.contentEditable = true;
+        titleEl.focus();
+        toggleBtn.classList.add('d-none');
+        saveBtn.classList.remove('d-none');
+        cancelBtn.classList.remove('d-none');
+        statusEl.innerText = '';
+      }
+
+      // Bewerkmodus uitschakelen (zonder opslaan)
+      function disableEditMode(restore = true) {
+        titleEl.contentEditable = false;
+        textEl.contentEditable = false;
+        toggleBtn.classList.remove('d-none');
+        saveBtn.classList.add('d-none');
+        cancelBtn.classList.add('d-none');
+        if (restore) {
+          titleEl.innerText = originalTitle;
+          textEl.innerText = originalText;
+        }
+        statusEl.innerText = '';
+      }
+
+      // Wijzigingen opslaan naar server
+      async function saveChanges() {
+        const updatedData = {
+          title: titleEl.innerText,
+          main_text: textEl.innerText
+        };
+
+        statusEl.innerText = 'Bezig met opslaan...';
+
+        try {
+          const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+          });
+
+          if (!response.ok) throw new Error('Opslaan mislukt');
+
+          // Bijwerken van originelen
+          originalTitle = titleEl.innerText;
+          originalText = textEl.innerText;
+          disableEditMode(false); // bewerkmodus uitschakelen zonder terug te zetten
+          statusEl.innerText = 'Opgeslagen!';
+          setTimeout(() => { statusEl.innerText = ''; }, 2000);
+        } catch (err) {
+          console.error(err);
+          statusEl.innerText = 'Fout bij opslaan.';
+        }
+      }
+
+      // Event listeners
+      toggleBtn.addEventListener('click', enableEditMode);
+      saveBtn.addEventListener('click', saveChanges);
+      cancelBtn.addEventListener('click', () => disableEditMode(true));
+
+      // Start
+      loadFromServer();
+
+      // Waarschuwing bij verlaten pagina met onopgeslagen wijzigingen
+      window.addEventListener('beforeunload', function(e) {
+        if (titleEl.contentEditable === 'true' || textEl.contentEditable === 'true') {
+          e.preventDefault();
+          e.returnValue = '';
+        }
+      });
+    })();
+  </script>
+
+  <script>
+  async function syncNavbarUserShared() {
+    const badge =
+      document.getElementById("userRoleBadge3") ||
+      document.getElementById("userRoleBadge") ||
+      document.getElementById("userRoleBadgeObs");
+
+    const logoutBtn =
+      document.getElementById("btnLogout3") ||
+      document.getElementById("btnLogoutObs");
+
+    const token = localStorage.getItem("token");
+
+    if (!token) {
+      if (badge) badge.textContent = "Not logged in";
+      if (logoutBtn) logoutBtn.classList.add("d-none");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:3001/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!res.ok) throw new Error("Failed to load current user");
+
+      const me = await res.json();
+      const currentUser = me.user || me;
+
+      if (badge) badge.textContent = currentUser?.role || "Unknown role";
+
+      if (logoutBtn) {
+        logoutBtn.classList.remove("d-none");
+        logoutBtn.onclick = () => {
+          localStorage.removeItem("token");
+          window.location.href = "/index.html";
+        };
+      }
+    } catch (err) {
+      console.error("Navbar auth sync failed:", err);
+      if (badge) badge.textContent = "Not logged in";
+      if (logoutBtn) logoutBtn.classList.add("d-none");
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", syncNavbarUserShared);
+</script>
 </body>
 </html>

@@ -42,32 +42,41 @@ model User {
 }
 
 model Task {
-  id          Int     @id @default(autoincrement())
-  name        String
-  description String?
-  category    String?
-  isDaily     Boolean @default(true)
-  active      Boolean @default(true)
-  sortOrder   Int     @default(0)
-
-  affectsInventory Boolean   @default(false)
+  id               Int              @id @default(autoincrement())
+  name             String
+  description      String?
+  category         String?
+  animalCategory   String?
+  isDaily          Boolean          @default(true)
+  sortOrder        Int              @default(0)
+  active           Boolean          @default(true)
+  affectsInventory Boolean          @default(false)
   feedItemId       Int?
-  feedItem         FeedItem? @relation(fields: [feedItemId], references: [id])
+  photoRequired    Boolean          @default(false)
+  subtasks         Json?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  feedItem         FeedItem?        @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
+  assignments      TaskAssignment[]
+  logs             DailyLog[]
 
-  assignments TaskAssignment[]
-
-  logs DailyLog[]
+  @@index([animalCategory])
+  @@index([category])
+  @@index([feedItemId])
 }
 
 model DailyLog {
-  id            Int      @id @default(autoincrement())
-  date          DateTime // store day as YYYY-MM-DD at 00:00:00 (we'll normalize)
-  completed     Boolean  @default(true)
-  quantityGrams Int?
-  notes         String?
+   id                Int       @id @default(autoincrement())
+  date              DateTime
+  taskId            Int
+  userId            Int
+  completed         Boolean   @default(false)
+  quantityGrams     Int?
+  notes             String?
+  completedSubtasks Json?
+  photoUrl          String?
+  ApprovalStatus    String?
 
   // supervisor workflow
   approvalStatus ApprovalStatus @default(PENDING)
@@ -78,8 +87,6 @@ model DailyLog {
   reviewedById   Int?
   reviewedBy     User?          @relation("ReviewedLogs", fields: [reviewedById], references: [id])
 
-  taskId Int
-  userId Int
   task   Task @relation(fields: [taskId], references: [id])
   user   User @relation(fields: [userId], references: [id])
 

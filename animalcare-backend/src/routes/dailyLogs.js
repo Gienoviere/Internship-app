@@ -1,16 +1,11 @@
 const express = require("express");
 const prisma = require("../prisma");
 const requireAuth = require("../middleware/requireAuth");
-const { createRestockEventForUser } = require("../lib/googleCalendar")
+const { createRestockEventForUser } = require("../lib/googleCalendar");
 
 const router = express.Router();
 
-/**
- * Helpers
- */
 function toDateOnlyUTC(dateStr) {
-  // Expecting YYYY-MM-DD
-  // Store as UTC midnight to avoid timezone drift in DB comparisons
   const [y, m, d] = dateStr.split("-").map(Number);
   if (!y || !m || !d) return null;
   return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
@@ -20,11 +15,16 @@ function isValidISODateOnly(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-/**
- * GET /daily-logs?date=YYYY-MM-DD
- * - Admin: returns all logs for that date
- * - User: returns only their logs for that date
- */
+function normalizeStringArray(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+}
+
+function filterAllowedSubtasks(taskSubtasks, completedSubtasks) {
+  const allowed = new Set(normalizeStringArray(Array.isArray(taskSubtasks) ? taskSubtasks : []));
+  return normalizeStringArray(completedSubtasks).filter((entry) => allowed.has(entry));
+}
+
 router.get("/", requireAuth, async (req, res) => {
   try {
     const { date } = req.query;
@@ -42,7 +42,16 @@ router.get("/", requireAuth, async (req, res) => {
         ...(isAdmin ? {} : { userId: req.user.userId }),
       },
       include: {
-        task: { select: { id: true, name: true, category: true } },
+        task: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            animalCategory: true,
+            subtasks: true,
+            photoRequired: true,
+          },
+        },
         user: { select: { id: true, name: true, email: true } },
       },
       orderBy: [{ taskId: "asc" }, { id: "asc" }],
@@ -55,15 +64,9 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-/**
- * POST /daily-logs
- * Body: { date: "YYYY-MM-DD", taskId: number, completed?: boolean, quantityGrams?: number, notes?: string }
- * - Any logged-in user can create their own log entry
- * - Uses upsert so repeating the same log updates instead of duplicates
- */
 router.post("/", requireAuth, async (req, res) => {
   try {
-    const { date, taskId, completed, quantityGrams, notes } = req.body || {};
+    const { date, taskId, completed, quantityGrams, notes, completedSubtasks, photoUrl } = req.body || {};
 
     if (!isValidISODateOnly(date)) {
       return res.status(400).json({ error: "date is required: YYYY-MM-DD" });
@@ -75,44 +78,26 @@ router.post("/", requireAuth, async (req, res) => {
       return res.status(400).json({ error: "taskId must be an integer" });
     }
 
-    // Ensure task exists and is active
     const task = await prisma.task.findUnique({ where: { id: tId } });
     if (!task) return res.status(404).json({ error: "Task not found" });
     if (!task.active) return res.status(400).json({ error: "Task is inactive" });
 
-    const q =
-      quantityGrams === undefined || quantityGrams === null
-        ? null
-        : Number(quantityGrams);
+    const normalizedCompletedSubtasks = filterAllowedSubtasks(task.subtasks, completedSubtasks);
+    if (task.photoRequired && !photoUrl) {
+      return res.status(400).json({ error: "A photo is required for this task" });
+    }
 
+    const q = quantityGrams === undefined || quantityGrams === null ? null : Number(quantityGrams);
     if (q !== null && (!Number.isFinite(q) || q < 0)) {
-      return res
-        .status(400)
-        .json({ error: "quantityGrams must be a non-negative number" });
+      return res.status(400).json({ error: "quantityGrams must be a non-negative number" });
     }
 
     const newQty = q === null ? 0 : Math.round(q);
 
     const result = await prisma.$transaction(async (tx) => {
-      // Find existing log so we can compute inventory delta when user edits quantity
-      const existing = await tx.dailyLog.findUnique({
-        where: {
-          date_taskId_userId: {
-            date: day,
-            taskId: tId,
-            userId: req.user.userId,
-          },
-        },
-      });
-
-      const oldQty = existing?.quantityGrams ? existing.quantityGrams : 0;
-
-
-      // Upsert log
       const approvalStatus = req.user.role === "ADMIN" ? "APPROVED" : "PENDING";
 
       const log = await tx.dailyLog.upsert({
-        
         where: {
           date_taskId_userId: {
             date: day,
@@ -127,12 +112,16 @@ router.post("/", requireAuth, async (req, res) => {
           completed: completed === undefined ? true : Boolean(completed),
           quantityGrams: newQty === 0 ? null : newQty,
           notes: notes ? String(notes) : null,
+          completedSubtasks: normalizedCompletedSubtasks,
+          photoUrl: photoUrl || null,
           approvalStatus,
         },
         update: {
           completed: completed === undefined ? true : Boolean(completed),
           quantityGrams: newQty === 0 ? null : newQty,
           notes: notes ? String(notes) : null,
+          completedSubtasks: normalizedCompletedSubtasks,
+          photoUrl: photoUrl || undefined,
           approvalStatus,
         },
         include: {
@@ -141,6 +130,7 @@ router.post("/", requireAuth, async (req, res) => {
               id: true,
               name: true,
               category: true,
+              animalCategory: true,
               affectsInventory: true,
               feedItemId: true,
             },
@@ -148,82 +138,69 @@ router.post("/", requireAuth, async (req, res) => {
         },
       });
 
-      // Inventory adjustment
-      // Inventory adjustment (ONE movement per DailyLog)
-let inventory = null;
+      let inventory = null;
 
-if (log.task.affectsInventory && log.task.feedItemId) {
-  // newQty is grams user entered (0 means none)
-  const desiredConsumed = newQty;          // grams
-  const desiredDelta = -desiredConsumed;   // inventory delta for THIS log
+      if (log.task.affectsInventory && log.task.feedItemId) {
+        const desiredConsumed = newQty;
+        const desiredDelta = -desiredConsumed;
 
-  // existing movement for this log (if any)
-  const existingMove = await tx.inventoryMovement.findUnique({
-    where: { refType_refId: { refType: "DailyLog", refId: log.id } },
-  });
+        const existingMove = await tx.inventoryMovement.findUnique({
+          where: { refType_refId: { refType: "DailyLog", refId: log.id } },
+        });
 
-  const prevDelta = existingMove ? existingMove.deltaGrams : 0;
-  const changeDelta = desiredDelta - prevDelta; // what we must APPLY to stock
+        const prevDelta = existingMove ? existingMove.deltaGrams : 0;
+        const changeDelta = desiredDelta - prevDelta;
 
-  if (changeDelta !== 0) {
-    const movement = await tx.inventoryMovement.upsert({
-      where: { refType_refId: { refType: "DailyLog", refId: log.id } },
-      create: {
-        feedItemId: log.task.feedItemId,
-        date: day,
-        deltaGrams: desiredDelta,
-        reason: "daily-log",
-        refType: "DailyLog",
-        refId: log.id,
-        userId: req.user.userId,
-      },
-      update: {
-        feedItemId: log.task.feedItemId,
-        date: day,
-        deltaGrams: desiredDelta,
-      },
-    });
+        if (changeDelta !== 0) {
+          const movement = await tx.inventoryMovement.upsert({
+            where: { refType_refId: { refType: "DailyLog", refId: log.id } },
+            create: {
+              feedItemId: log.task.feedItemId,
+              date: day,
+              deltaGrams: desiredDelta,
+              reason: "daily-log",
+              refType: "DailyLog",
+              refId: log.id,
+              userId: req.user.userId,
+            },
+            update: {
+              feedItemId: log.task.feedItemId,
+              date: day,
+              deltaGrams: desiredDelta,
+            },
+          });
 
-    const updatedItem = await tx.feedItem.update({
-      where: { id: log.task.feedItemId },
-      data: { stockGrams: { increment: changeDelta } }, //  race-safe
-    });
+          const updatedItem = await tx.feedItem.update({
+            where: { id: log.task.feedItemId },
+            data: { stockGrams: { increment: changeDelta } },
+          });
 
-    inventory = { movement, feedItem: updatedItem };
-  }
-}
-
+          inventory = { movement, feedItem: updatedItem };
+        }
+      }
 
       return { log, inventory };
     });
-    try {
-    const feedItem = result.inventory?.feedItem;
-    const threshold = 5000;
 
-    if (feedItem && feedItem.stockGrams <= threshold) {
-      await createRestockEventForUser(
-        req.user.userId,
-        feedItem.name,
-        feedItem.stockGrams,
-        threshold
-      );
+    try {
+      const feedItem = result.inventory?.feedItem;
+      const threshold = 5000;
+      if (feedItem && feedItem.stockGrams <= threshold) {
+        await createRestockEventForUser(req.user.userId, feedItem.name, feedItem.stockGrams, threshold);
+      }
+    } catch (err) {
+      console.error("Calendar event creation failed after daily log:", err.message);
     }
-  } catch (err) {
-    console.error("Calendar event creation failed after daily log:", err.message);
-  }
 
     res.status(201).json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({
+      error: "Server error. Check that completedSubtasks and photoUrl exist in Prisma.",
+    });
   }
 });
 
-/**
- * PATCH /daily-logs/:id
- * - Admin can edit any log
- * - Users can only edit their own log
- */
 router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
@@ -234,7 +211,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
     const existing = await prisma.dailyLog.findUnique({
       where: { id },
       include: {
-        task: { select: { affectsInventory: true, feedItemId: true } },
+        task: { select: { affectsInventory: true, feedItemId: true, photoRequired: true, subtasks: true } },
       },
     });
 
@@ -243,28 +220,32 @@ router.patch("/:id", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const { completed, quantityGrams, notes } = req.body || {};
+    const { completed, quantityGrams, notes, completedSubtasks, photoUrl } = req.body || {};
 
-    const q =
-      quantityGrams === undefined || quantityGrams === null
-        ? undefined
-        : Number(quantityGrams);
-
+    const q = quantityGrams === undefined || quantityGrams === null ? undefined : Number(quantityGrams);
     if (q !== undefined && (!Number.isFinite(q) || q < 0)) {
       return res.status(400).json({ error: "quantityGrams must be a non-negative number" });
     }
 
+    const nextPhotoUrl = photoUrl === undefined ? existing.photoUrl : (photoUrl || null);
+    if (existing.task.photoRequired && !nextPhotoUrl) {
+      return res.status(400).json({ error: "A photo is required for this task" });
+    }
+
     const newQty = q === undefined ? undefined : Math.round(q);
-    const oldQty = existing.quantityGrams ? existing.quantityGrams : 0;
+    const safeCompletedSubtasks = completedSubtasks === undefined
+      ? undefined
+      : filterAllowedSubtasks(existing.task.subtasks, completedSubtasks);
 
     const result = await prisma.$transaction(async (tx) => {
-      // Update log
       const log = await tx.dailyLog.update({
         where: { id },
         data: {
           ...(completed !== undefined ? { completed: Boolean(completed) } : {}),
           ...(newQty !== undefined ? { quantityGrams: newQty === 0 ? null : newQty } : {}),
           ...(notes !== undefined ? { notes: notes ? String(notes) : null } : {}),
+          ...(safeCompletedSubtasks !== undefined ? { completedSubtasks: safeCompletedSubtasks } : {}),
+          ...(photoUrl !== undefined ? { photoUrl: nextPhotoUrl } : {}),
         },
         include: {
           task: { select: { affectsInventory: true, feedItemId: true } },
@@ -272,8 +253,6 @@ router.patch("/:id", requireAuth, async (req, res) => {
       });
 
       let inventory = null;
-
-      // If quantity not provided, don’t touch inventory
       if (newQty === undefined) return { log, inventory };
 
       if (log.task.affectsInventory && log.task.feedItemId) {
@@ -321,14 +300,8 @@ router.patch("/:id", requireAuth, async (req, res) => {
     try {
       const feedItem = result.inventory?.feedItem;
       const threshold = 5000;
-
       if (feedItem && feedItem.stockGrams <= threshold) {
-        await createRestockEventForUser(
-          req.user.userId,
-          feedItem.name,
-          feedItem.stockGrams,
-          threshold
-        );
+        await createRestockEventForUser(req.user.userId, feedItem.name, feedItem.stockGrams, threshold);
       }
     } catch (err) {
       console.error("Calendar event creation failed after daily log edit:", err.message);
@@ -337,9 +310,10 @@ router.patch("/:id", requireAuth, async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({
+      error: "Server error. Check that completedSubtasks and photoUrl exist in Prisma.",
+    });
   }
 });
-
 
 module.exports = router;
