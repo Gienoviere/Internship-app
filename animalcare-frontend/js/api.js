@@ -1,9 +1,15 @@
 import { getToken, clearToken } from "./state.js";
 
+// const API_BASE_URL = (
+//   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE_URL)
+//   || "https://internship-app-4iud.onrender.com"
+// ).replace(/\/$/, "");
+
 const API_BASE_URL = (
   (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE_URL)
-  || "https://internship-app-4iud.onrender.com"
+  || "http://localhost:3000"
 ).replace(/\/$/, "");
+
 
 try {
   const apiHost = new URL(API_BASE_URL).hostname;
