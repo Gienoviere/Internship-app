@@ -488,6 +488,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="../js/include.js"></script>
   <script type="module" src="./main.js"></script>
+  <script type="module" src="./js/userRoleBadge.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const currentPage = window.location.pathname.split('/').pop() || 'index.html';
@@ -503,55 +504,5 @@
       });
     });
   </script>
-
-  <script>
-  async function syncNavbarUserShared() {
-    const badge =
-      document.getElementById("userRoleBadge3") ||
-      document.getElementById("userRoleBadge") ||
-      document.getElementById("userRoleBadgeObs");
-
-    const logoutBtn =
-      document.getElementById("btnLogout3") ||
-      document.getElementById("btnLogoutObs");
-
-    const token = localStorage.getItem("token");
-
-    if (!token) {
-      if (badge) badge.textContent = "Not logged in";
-      if (logoutBtn) logoutBtn.classList.add("d-none");
-      return;
-    }
-
-    try {
-      const res = await fetch("http://localhost:3001/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
-
-      if (!res.ok) throw new Error("Failed to load current user");
-
-      const me = await res.json();
-      const currentUser = me.user || me;
-
-      if (badge) badge.textContent = currentUser?.role || "Unknown role";
-
-      if (logoutBtn) {
-        logoutBtn.classList.remove("d-none");
-        logoutBtn.onclick = () => {
-          localStorage.removeItem("token");
-          window.location.href = "/index.html";
-        };
-      }
-    } catch (err) {
-      console.error("Navbar auth sync failed:", err);
-      if (badge) badge.textContent = "Not logged in";
-      if (logoutBtn) logoutBtn.classList.add("d-none");
-    }
-  }
-
-  document.addEventListener("DOMContentLoaded", syncNavbarUserShared);
-</script>
 </body>
 </html>
