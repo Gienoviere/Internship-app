@@ -10,6 +10,7 @@ const API_BASE_URL = (
   || "http://192.168.20.40:3001"
 ).replace(/\/$/, "");
 
+
 try {
   const apiHost = new URL(API_BASE_URL).hostname;
   const pageHost = location.hostname;
