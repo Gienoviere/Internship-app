@@ -17,7 +17,7 @@ async function syncNavbarUserShared() {
   }
 
   try {
-    const res = await fetch("http://localhost:3001/auth/me", {
+    const res = await fetch("http://192.168.20.40:3001/auth/me", {
       headers: {
         Authorization: `Bearer ${token}`
       }

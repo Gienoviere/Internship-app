@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
 
-        const res = await fetch("http://localhost:3001/google-calendar/connect", {
+        const res = await fetch("http://192.168.20.40:3001/google-calendar/connect", {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`

@@ -229,7 +229,7 @@ if (btnCsv) {
       btnCsv.disabled = true;
       btnCsv.textContent = "Downloading...";
 
-      const res = await fetch(`http://localhost:3001/admin/export-daily.csv?date=${date}`, {
+      const res = await fetch(`http://192.168.20.40:3001/admin/export-daily.csv?date=${date}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
