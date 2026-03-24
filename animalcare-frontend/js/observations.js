@@ -1,4 +1,4 @@
-import { api } from "./api.js";
+import { api, API_BASE_URL } from "./api.js";
 import { state } from "./state.js";
 import { $, setHTML } from "./dom.js";
 import { setAlert } from "./ui.js";
@@ -58,7 +58,7 @@ export async function loadObservations(date) {
       for (const f of files) fd.append("photos", f);
 
       try {
-        await fetch(`/observations/${id}/photos`, {
+        await fetch(`${API_BASE_URL}/observations/${id}/photos`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,

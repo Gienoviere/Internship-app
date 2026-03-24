@@ -141,13 +141,14 @@ model InventoryMovement {
   reason     String
   refType    String?
   refId      Int?
+  lineKey    String?   // NEW: lets one DailyLog create multiple movements
   userId     Int?
 
   createdAt DateTime @default(now())
 
   feedItem FeedItem @relation(fields: [feedItemId], references: [id])
 
-  @@unique([refType, refId])
+  @@unique([refType, refId, lineKey])
   @@index([date])
   @@index([feedItemId])
 }

@@ -261,7 +261,7 @@ async function onCreateTask() {
       sortOrder: Number(document.getElementById("createTaskSortOrder3").value || 0),
       active: document.getElementById("createTaskActive3").checked,
       photoRequired: document.getElementById("createTaskRequirePhoto3").checked,
-      subtasks: textareaLines(document.getElementById("createTaskSubtasks3").value),
+      subtasks: collectSubtasks("createTaskSubtasksWrap3"),
     };
 
     await api("/tasks", { method: "POST", json: payload });
@@ -428,3 +428,66 @@ function escapeHtml(value) {
 function escapeAttr(value) {
   return escapeHtml(value);
 }
+
+function addSubtaskRow(wrapId, feedItems = [], value = {}) {
+  const wrap = document.getElementById(wrapId);
+  const tpl = document.getElementById("taskSubtaskRowTemplate");
+  const node = tpl.content.firstElementChild.cloneNode(true);
+
+  node.querySelector(".subtask-title").value = value.title || "";
+  node.querySelector(".subtask-amount").value = value.amount ?? "";
+  node.querySelector(".subtask-unit").value = value.unit || "g";
+  node.querySelector(".subtask-required").checked = value.required !== false;
+  node.querySelector(".subtask-affectsInventory").checked = Boolean(value.affectsInventory);
+
+  const feedSelect = node.querySelector(".subtask-feedItemId");
+  feedItems.forEach((item) => {
+    const opt = document.createElement("option");
+    opt.value = item.id;
+    opt.textContent = item.name;
+    feedSelect.appendChild(opt);
+  });
+  feedSelect.value = value.feedItemId ?? "";
+
+  node.querySelector(".btn-remove-subtask").addEventListener("click", () => {
+    node.remove();
+  });
+
+  wrap.appendChild(node);
+}
+
+function collectSubtasks(wrapId) {
+  return [...document.querySelectorAll(`#${wrapId} .subtask-row`)]
+    .map((row, index) => ({
+      id: row.dataset.subtaskId || `sub_${Date.now()}_${index}`,
+      title: row.querySelector(".subtask-title").value.trim(),
+      amount: row.querySelector(".subtask-amount").value === ""
+        ? null
+        : Number(row.querySelector(".subtask-amount").value),
+      unit: row.querySelector(".subtask-unit").value,
+      feedItemId: row.querySelector(".subtask-feedItemId").value || null,
+      affectsInventory: row.querySelector(".subtask-affectsInventory").checked,
+      required: row.querySelector(".subtask-required").checked,
+      sortOrder: index,
+    }))
+    .filter((s) => s.title);
+}
+
+// edit task option
+await api(`/tasks/${taskId}`, {
+  method: "PATCH",
+  json: {
+    name,
+    description,
+    category,
+    animalCategory,
+    isDaily,
+    sortOrder,
+    active,
+    photoRequired,
+    subtasks: collectSubtasks("editTaskSubtasksWrap3"),
+  },
+});
+
+// delete task option
+await api(`/tasks/${taskId}`, { method: "DELETE" });
