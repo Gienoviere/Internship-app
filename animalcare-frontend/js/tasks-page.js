@@ -1,45 +1,4 @@
-const api = {
-  async me() {
-    const res = await fetch('/auth/me', { credentials: 'include' });
-    if (!res.ok) throw new Error('Failed to load user');
-    return res.json();
-  },
-  async getToday(date) {
-    const res = await fetch(`/tasks/today?date=${encodeURIComponent(date)}`, { credentials: 'include' });
-    if (!res.ok) throw new Error(await readError(res));
-    return res.json();
-  },
-  async createTask(payload) {
-    const res = await fetch('/tasks', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(await readError(res));
-    return res.json();
-  },
-  async createLog(payload) {
-    const res = await fetch('/daily-logs', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(await readError(res));
-    return res.json();
-  },
-  async updateLog(id, payload) {
-    const res = await fetch(`/daily-logs/${id}`, {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(await readError(res));
-    return res.json();
-  }
-};
+import { api } from "./api.js";
 
 const state = {
   me: null,
@@ -74,8 +33,8 @@ init().catch((err) => showAlert(err.message || 'Failed to load page', 'danger'))
 
 async function init() {
   wireEvents();
-  state.me = await api.me();
-  els.userRoleBadge.textContent = state.me.role || 'Logged in';
+  state.me = await api("/auth/me");
+  els.userRoleBadge.textContent = state.me.role || "Logged in";
   els.globalDate.value = state.selectedDate;
   await refresh();
 }
@@ -107,7 +66,7 @@ function wireEvents() {
 }
 
 async function refresh() {
-  const payload = await api.getToday(state.selectedDate);
+  const payload = await api(`/tasks/today?date=${encodeURIComponent(state.selectedDate)}`);
   state.tasks = payload.tasks || [];
   fillCategoryFilters();
   renderSummary();
@@ -294,23 +253,23 @@ async function onSaveLog() {
 async function onCreateTask() {
   try {
     const payload = {
-      name: document.getElementById('createTaskName3').value.trim(),
-      description: document.getElementById('createTaskDescription3').value.trim(),
-      category: document.getElementById('createAnimalCategory3').value.trim(),
-      animalCategory: document.getElementById('createAnimalCategory3').value.trim(),
-      isDaily: document.getElementById('createTaskDaily3').checked,
-      sortOrder: Number(document.getElementById('createTaskSortOrder3').value || 0),
-      active: document.getElementById('createTaskActive3').checked,
-      photoRequired: document.getElementById('createTaskRequirePhoto3').checked,
-      subtasks: textareaLines(document.getElementById('createTaskSubtasks3').value),
+      name: document.getElementById("createTaskName3").value.trim(),
+      description: document.getElementById("createTaskDescription3").value.trim(),
+      category: document.getElementById("createAnimalCategory3").value.trim(),
+      animalCategory: document.getElementById("createAnimalCategory3").value.trim(),
+      isDaily: document.getElementById("createTaskDaily3").checked,
+      sortOrder: Number(document.getElementById("createTaskSortOrder3").value || 0),
+      active: document.getElementById("createTaskActive3").checked,
+      photoRequired: document.getElementById("createTaskRequirePhoto3").checked,
+      subtasks: textareaLines(document.getElementById("createTaskSubtasks3").value),
     };
 
-    await api.createTask(payload);
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('createTaskModal')).hide();
-    showAlert('Task created.', 'success');
+    await api("/tasks", { method: "POST", json: payload });
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("createTaskModal")).hide();
+    showAlert("Task created.", "success");
     await refresh();
   } catch (err) {
-    showAlert(err.message || 'Could not create task', 'danger');
+    showAlert(err.message || "Could not create task", "danger");
   }
 }
 
