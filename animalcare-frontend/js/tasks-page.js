@@ -30,15 +30,80 @@ const els = {
   btnSaveLog: document.getElementById('btnSaveLog3'),
 };
 
+function isManager() {
+  const role = String(state.me?.role || "").toUpperCase();
+  return role === "ADMIN" || role === "SUPERVISOR";
+}
+
+function normalizeFrontendSubtask(subtask, index = 0) {
+  if (!subtask) {
+    return {
+      id: `sub_${index}`,
+      title: "",
+      amount: null,
+      unit: "g",
+      feedItemId: null,
+      affectsInventory: false,
+      required: true,
+      sortOrder: index,
+    };
+  }
+
+  if (typeof subtask === "string") {
+    return {
+      id: `sub_${index}`,
+      title: subtask,
+      amount: null,
+      unit: "g",
+      feedItemId: null,
+      affectsInventory: false,
+      required: true,
+      sortOrder: index,
+    };
+  }
+
+  let title = subtask.title;
+  if (title && typeof title === "object") {
+    title = title.title || title.name || String(title);
+  }
+
+  return {
+    id: String(subtask.id || `sub_${index}`),
+    title: String(title || ""),
+    amount:
+      subtask.amount === null || subtask.amount === undefined || subtask.amount === ""
+        ? null
+        : Number(subtask.amount),
+    unit: String(subtask.unit || "g"),
+    feedItemId:
+      subtask.feedItemId === null || subtask.feedItemId === undefined || subtask.feedItemId === ""
+        ? null
+        : Number(subtask.feedItemId),
+    affectsInventory: Boolean(subtask.affectsInventory),
+    required: subtask.required !== false,
+    sortOrder: Number.isFinite(Number(subtask.sortOrder)) ? Number(subtask.sortOrder) : index,
+  };
+}
+
+function normalizeFrontendSubtasks(subtasks) {
+  if (!Array.isArray(subtasks)) return [];
+  return subtasks.map((sub, index) => normalizeFrontendSubtask(sub, index));
+}
+
 init().catch((err) => showAlert(err.message || 'Failed to load page', 'danger'));
 
 async function init() {
   wireEvents();
-  state.me = await api("/auth/me");
-  els.userRoleBadge.textContent = state.me.role || "Logged in";
+
+  const meRes = await api("/auth/me");
+  state.me = meRes?.user || meRes || null;
+
+  els.userRoleBadge.textContent = state.me?.role || "Logged in";
   els.globalDate.value = state.selectedDate;
+
   state.feedItems = await api("/inventory/feed-items");
   addSubtaskRow("createTaskSubtasksWrap3", state.feedItems || []);
+
   await refresh();
 }
 
@@ -181,12 +246,11 @@ function renderCategorySection(category, tasks) {
 }
 
 function renderTaskCard(task) {
-  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const subtasks = normalizeFrontendSubtasks(task.subtasks);
   const completedIds = Array.isArray(task.completedSubtasks) ? task.completedSubtasks.map(String) : [];
 
   const subtaskBadges = subtasks.length
-    ? subtasks.map((sub, index) => {
-        const subObj = typeof sub === "string" ? { id: `sub_${index}`, title: sub } : sub;
+    ? subtasks.map((subObj) => {
         const done = completedIds.includes(String(subObj.id));
         const amountText =
           subObj.amount !== null && subObj.amount !== undefined && subObj.amount !== ""
@@ -232,18 +296,14 @@ function renderTaskCard(task) {
               ${task.logged ? 'Edit log' : 'Log task'}
             </button>
 
-            ${
-              state.me && (state.me.role === "ADMIN" || state.me.role === "SUPERVISOR")
-                ? `
-                  <button class="btn btn-outline-secondary btn-sm" data-action="edit-task" data-task-id="${task.taskId}">
-                    Edit task
-                  </button>
-                  <button class="btn btn-outline-danger btn-sm" data-action="delete-task" data-task-id="${task.taskId}">
-                    Delete
-                  </button>
-                `
-                : ""
-            }
+            ${isManager() ? `
+              <button class="btn btn-outline-secondary btn-sm" data-action="edit-task" data-task-id="${task.taskId}">
+                Edit task
+              </button>
+              <button class="btn btn-outline-danger btn-sm" data-action="delete-task" data-task-id="${task.taskId}">
+                Delete
+              </button>
+            ` : ""}
           </div>
         </div>
       </div>
@@ -406,17 +466,15 @@ async function onQuickLogSubmit() {
 }
 
 function buildSubtaskCheckboxes(subtasks = [], completed = []) {
-  if (!Array.isArray(subtasks) || !subtasks.length) {
+  const normalizedSubtasks = normalizeFrontendSubtasks(subtasks);
+
+  if (!normalizedSubtasks.length) {
     return '<div class="text-muted small">No subcomponents added for this task.</div>';
   }
 
   const completedIds = Array.isArray(completed) ? completed.map(String) : [];
 
-  return subtasks.map((subtask, index) => {
-    const sub = typeof subtask === "string"
-      ? { id: `sub_${index}`, title: subtask, amount: null, unit: "" }
-      : subtask;
-
+  return normalizedSubtasks.map((sub) => {
     const checked = completedIds.includes(String(sub.id));
     const amountText =
       sub.amount !== null && sub.amount !== undefined && sub.amount !== ""
@@ -542,11 +600,14 @@ function addSubtaskRow(wrapId, feedItems = [], value = {}) {
   const tpl = document.getElementById("taskSubtaskRowTemplate");
   const node = tpl.content.firstElementChild.cloneNode(true);
 
-  node.querySelector(".subtask-title").value = value.title || "";
-  node.querySelector(".subtask-amount").value = value.amount ?? "";
-  node.querySelector(".subtask-unit").value = value.unit || "g";
-  node.querySelector(".subtask-required").checked = value.required !== false;
-  node.querySelector(".subtask-affectsInventory").checked = Boolean(value.affectsInventory);
+  const sub = normalizeFrontendSubtask(value);
+
+  node.dataset.subtaskId = sub.id;
+  node.querySelector(".subtask-title").value = sub.title || "";
+  node.querySelector(".subtask-amount").value = sub.amount ?? "";
+  node.querySelector(".subtask-unit").value = sub.unit || "g";
+  node.querySelector(".subtask-required").checked = sub.required !== false;
+  node.querySelector(".subtask-affectsInventory").checked = Boolean(sub.affectsInventory);
 
   const feedSelect = node.querySelector(".subtask-feedItemId");
   feedItems.forEach((item) => {
@@ -555,7 +616,7 @@ function addSubtaskRow(wrapId, feedItems = [], value = {}) {
     opt.textContent = item.name;
     feedSelect.appendChild(opt);
   });
-  feedSelect.value = value.feedItemId ?? "";
+  feedSelect.value = sub.feedItemId ?? "";
 
   node.querySelector(".btn-remove-subtask").addEventListener("click", () => {
     node.remove();
@@ -597,8 +658,9 @@ function openEditTaskModal(taskId) {
   const wrap = document.getElementById("editTaskSubtasksWrap3");
   if (wrap) {
     wrap.innerHTML = "";
-    const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
-    subtasks.forEach((sub) => addSubtaskRow("editTaskSubtasksWrap3", state.feedItems || [], typeof sub === "string" ? { title: sub } : sub));
+    normalizeFrontendSubtasks(task.subtasks).forEach((sub) => {
+      addSubtaskRow("editTaskSubtasksWrap3", state.feedItems || [], sub);
+    });
   }
 
   bootstrap.Modal.getOrCreateInstance(document.getElementById("editTaskModal")).show();
