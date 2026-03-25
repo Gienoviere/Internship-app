@@ -2,19 +2,20 @@
 import { API_BASE, LARGE_DAYS, getToken } from './config.js';
 import {
   fetchFeedItems, fetchMovements, createFeedItem, patchFeedItem,
-  deleteFeedItem, createMovement, deleteMovement as apiDeleteMovement
+  deleteFeedItem, createMovement, deleteMovement as apiDeleteMovement,
+  fetchInventorySettings, saveInventorySettings,
+  fetchManualAverages, saveManualAverage
 } from './api.js';
 import {
   feedItems, setFeedItems, movements, setMovements,
-  manualAvgUsage, updateManualAvg, isDuplicateName,
-  getDisplayAvg, getStatus, recomputeAvgUsageCache
+  manualAvgUsage, setManualAvgUsage, updateManualAvg, isDuplicateName
 } from './state.js';
 import {
   renderTable, renderUsage, renderUsageHistory, showHistory,
   showMessage, showBackendError, hideBackendError,
   showMovementsWarning, hideMovementsWarning, updatePeriodLabels
 } from './ui.js';
-import { loadSettings, saveSettings } from './settings.js';
+import { getSettings, setSettings } from './settings.js';
 import { wireQuickLogShared } from "/js/quick-log.js";
 
 console.log("main.js loaded");
@@ -66,12 +67,40 @@ async function syncNavbarUser() {
   }
 }
 
+
+
 // Globale variabelen voor modals
 let currentEditId = null;
 let currentConsumeId = null;
 let currentAddStockId = null;
 let currentDeleteMovementId = null;
 let currentDeleteItemId = null;
+
+async function loadInventorySettings() {
+  try {
+    const settings = await fetchInventorySettings();
+    setSettings({
+      lowThreshold: settings.lowThresholdDays,
+      almostOutThreshold: settings.almostOutThresholdDays,
+      avgDays: settings.avgDays
+    });
+  } catch (err) {
+    console.error('settings error', err);
+  }
+}
+
+async function loadManualAverages() {
+  try {
+    const rows = await fetchManualAverages();
+    const map = {};
+    rows.forEach(row => {
+      map[row.feedItemId] = row.avgKgPerDay;
+    });
+    setManualAvgUsage(map);
+  } catch (err) {
+    console.error('manual avg error', err);
+  }
+}
 
 // Data ophalen
 async function loadFeedItems() {
@@ -106,6 +135,7 @@ async function addItem(name, stockKg, manualAvg) {
   const updated = [...feedItems, newItem];
   setFeedItems(updated);
   if (manualAvg > 0) {
+    await saveManualAverage(newItem.id, manualAvg);
     updateManualAvg(newItem.id, manualAvg);
   }
   renderTable();
@@ -130,6 +160,7 @@ async function updateItem(id, name, stockKg, manualAvg) {
     setFeedItems(updatedItems);
   }
 
+  await saveManualAverage(id, manualAvg);
   updateManualAvg(id, manualAvg);
   renderTable();
   renderUsage();
@@ -453,7 +484,7 @@ if (googleBtn) {
     avgFeedback.textContent = 'Please enter a valid positive number.';
     settingsFormError.classList.add('d-none');
 
-    const settings = loadSettings();
+    const settings = getSettings();
     lowInput.value = settings.lowThreshold;
     almostInput.value = settings.almostOutThreshold;
     avgInput.value = settings.avgDays;
@@ -487,19 +518,31 @@ if (googleBtn) {
       almostFeedback.textContent = 'Please enter a valid positive number.';
     }
 
-    saveSettings({ lowThreshold: low, almostOutThreshold: almost, avgDays });
+    (async () => {
+      await saveInventorySettings({
+        lowThresholdDays: low,
+        almostOutThresholdDays: almost,
+        avgDays
+      });
 
-    recomputeAvgUsageCache();
+      setSettings({
+        lowThreshold: low,
+        almostOutThreshold: almost,
+        avgDays
+      });
 
-    renderTable();
-    renderUsage();
-    if (document.getElementById('usageHistoryModal').classList.contains('show')) {
-      renderUsageHistory();
-    }
-    updatePeriodLabels();
+      await loadFeedItems();
 
-    bootstrap.Modal.getInstance(settingsModalEl).hide();
-    showMessage('Settings saved');
+      renderTable();
+      renderUsage();
+      if (document.getElementById('usageHistoryModal').classList.contains('show')) {
+        renderUsageHistory();
+      }
+      updatePeriodLabels();
+
+      bootstrap.Modal.getInstance(settingsModalEl).hide();
+      showMessage('Settings saved');
+    })();
   });
 
   // Filters
@@ -507,9 +550,13 @@ if (googleBtn) {
   document.getElementById('statusFilter').addEventListener('change', renderTable);
 
   // Start
-  loadFeedItems();
-  loadMovements();
-  updatePeriodLabels();
+  (async () => {
+    await loadInventorySettings();
+    await loadManualAverages();
+    await loadFeedItems();
+    await loadMovements();
+    updatePeriodLabels();
+  })();
 
   setInterval(() => {
     loadFeedItems();

@@ -1,7 +1,6 @@
 // ui.js
-import { feedItems, getDisplayAvg, getStatus, manualAvgUsage, avgUsageCache, movements } from './state.js';
-import { LARGE_DAYS } from './config.js';
-import { loadSettings } from './settings.js';
+import { feedItems, manualAvgUsage, movements } from './state.js';
+import { getSettings } from './settings.js';
 
 // DOM-elementen (één keer opvragen)
 const tbody = document.getElementById('inventoryTableBody');
@@ -34,14 +33,7 @@ export function renderTable() {
   const filtered = feedItems.filter(item => {
     if (searchTerm && !item.name.toLowerCase().includes(searchTerm)) return false;
     if (filterValue === 'all') return true;
-    const stockKg = item.stockGrams / 1000;
-    const usage = getDisplayAvg(item.id);
-    const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? LARGE_DAYS : 0);
-    const status = getStatus(daysNum, stockKg);
-    if (filterValue === 'sufficient' && status !== 'sufficient') return false;
-    if (filterValue === 'low' && status !== 'low') return false;
-    if (filterValue === 'almostout' && status !== 'almostout') return false;
-    return true;
+    return item.status === filterValue;
   });
 
   if (filtered.length === 0) {
@@ -52,10 +44,9 @@ export function renderTable() {
   let html = '';
   filtered.forEach(item => {
     const stockKg = item.stockGrams / 1000;
-    const usage = getDisplayAvg(item.id);
-    const daysLeft = usage > 0 ? Math.round(stockKg / usage) : (stockKg > 0 ? '∞' : '0');
-    const daysNum = usage > 0 ? stockKg / usage : (stockKg > 0 ? LARGE_DAYS : 0);
-    const status = getStatus(daysNum, stockKg);
+    const usage = item.avgKgPerDay || 0;
+    const daysLeft = item.daysLeft == null ? '-' : item.daysLeft;
+    const status = item.status || 'unknown';
 
     let statusBadge = '', rowClass = '';
     if (status === 'sufficient') { statusBadge = '<span class="badge bg-success">Sufficient</span>'; }
@@ -63,7 +54,7 @@ export function renderTable() {
     else if (status === 'almostout') { statusBadge = '<span class="badge bg-danger">Almost out</span>'; rowClass = 'table-danger'; }
     else { statusBadge = '<span class="badge bg-secondary">Unknown</span>'; }
 
-    const avgCell = usage > 0 ? usage.toFixed(1) + ' kg' + (manualAvgUsage[item.id] ? ' ' : '') : '-';
+    const avgCell = usage > 0 ? usage.toFixed(1) + ' kg' : '-';
 
     html += `<tr class="${rowClass}" data-id="${item.id}">
       <td class="fw-semibold text-nowrap">${item.name}</td>
@@ -165,7 +156,7 @@ function updateAlert() {
 
 // Gebruik van de laatste X dagen (widget) – X uit instellingen
 export function renderUsage() {
-  const settings = loadSettings();
+  const settings = getSettings();
   if (Object.keys(avgUsageCache).length === 0) {
     usageContainer.innerHTML = '<p class="text-muted">No consumption data available (no movements in the last ' + settings.avgDays + ' days).</p>';
     return;
@@ -183,7 +174,7 @@ export function renderUsage() {
 
 // Tabel met alle bewegingen (laatste X dagen) voor het modal – X uit instellingen
 export function renderUsageHistory() {
-  const settings = loadSettings();
+  const settings = getSettings();
   const now = new Date();
   const cutoff = new Date(now.getTime() - settings.avgDays * 24 * 60 * 60 * 1000);
   const recentMovements = movements
@@ -261,7 +252,7 @@ export function hideMovementsWarning() {
 
 // NIEUW: labels bijwerken met de actuele periode
 export function updatePeriodLabels() {
-  const settings = loadSettings();
+  const settings = getSettings();
   const days = settings.avgDays;
   const periodLabel = document.getElementById('usagePeriodLabel');
   if (periodLabel) {

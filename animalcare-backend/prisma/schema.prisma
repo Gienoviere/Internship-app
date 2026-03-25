@@ -39,6 +39,9 @@ model User {
   googleAccessToken String?
   googleRefreshToken String?
   googleExpiry DateTime?
+
+  inventorySettings  InventorySettings?
+  inventoryManualAvg InventoryManualAvg[]
 }
 
 model Task {
@@ -115,6 +118,8 @@ model FeedItem {
   tasks     Task[]
   rations   FeedRation[]
   movements InventoryMovement[]
+  
+  inventoryManualAvg InventoryManualAvg[]
 }
 
 model FeedRation {
@@ -200,3 +205,28 @@ model TaskAssignment {
   @@unique([taskId, userId])
 }
 
+model InventorySettings {
+  id                    Int      @id @default(autoincrement())
+  userId                Int      @unique
+  lowThresholdDays      Int      @default(7)
+  almostOutThresholdDays Int     @default(3)
+  avgDays               Int      @default(30)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model InventoryManualAvg {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  feedItemId   Int
+  avgKgPerDay  Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feedItem  FeedItem @relation(fields: [feedItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, feedItemId])
+}

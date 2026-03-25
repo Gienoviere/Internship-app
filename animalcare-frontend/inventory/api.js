@@ -56,3 +56,25 @@ export async function createMovement(feedItemId, date, deltaGrams, reason) {
 export async function deleteMovement(id) {
   return apiFetch(`/inventory/movements/${id}`, { method: 'DELETE' });
 }
+
+export async function fetchInventorySettings() {
+  return apiFetch('/inventory/settings');
+}
+
+export async function saveInventorySettings(settings) {
+  return apiFetch('/inventory/settings', {
+    method: 'PATCH',
+    body: JSON.stringify(settings)
+  });
+}
+
+export async function fetchManualAverages() {
+  return apiFetch('/inventory/manual-avg');
+}
+
+export async function saveManualAverage(feedItemId, avgKgPerDay) {
+  return apiFetch(`/inventory/manual-avg/${feedItemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ avgKgPerDay })
+  });
+}

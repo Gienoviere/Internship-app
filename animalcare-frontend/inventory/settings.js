@@ -1,24 +1,22 @@
-// settings.js
-const STORAGE_KEY = 'inventory_settings';
-
 const defaultSettings = {
   lowThreshold: 7,
   almostOutThreshold: 3,
   avgDays: 30
 };
 
-export function loadSettings() {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  if (stored) {
-    try {
-      return { ...defaultSettings, ...JSON.parse(stored) };
-    } catch (e) {
-      return defaultSettings;
-    }
-  }
-  return defaultSettings;
+let currentSettings = { ...defaultSettings };
+
+export function getSettings() {
+  return currentSettings;
 }
 
-export function saveSettings(settings) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+export function setSettings(settings) {
+  currentSettings = {
+    ...defaultSettings,
+    ...settings
+  };
+}
+
+export function getDefaultSettings() {
+  return { ...defaultSettings };
 }
