@@ -4,6 +4,8 @@ import {
   loadObservations,
   createObservation,
   updateObservation,
+  wireObservationPhotoPreview,
+  loadTaskOptions,
 } from "./observations.js";
 
 function $(id) {
@@ -22,22 +24,15 @@ function setAlert(type, msg) {
 function setRoleBadge() {
   const badge = $("userRoleBadgeObs");
   if (!badge) return;
-
-  if (!state.currentUser) {
-    badge.textContent = "Not logged in";
-    return;
-  }
-
-  badge.textContent = state.currentUser.role || "Unknown role";
+  badge.textContent = state.currentUser?.role || "Not logged in";
 }
 
 async function refreshObservationsPage() {
   const date = $("globalDateObs")?.value || isoToday();
-
   const me = await api("/auth/me");
   state.currentUser = me.user || me;
-
   setRoleBadge();
+  await loadTaskOptions();
   await loadObservations(date);
 }
 
@@ -45,6 +40,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("globalDateObs")) {
     $("globalDateObs").value = isoToday();
   }
+
+  wireObservationPhotoPreview();
 
   $("btnRefreshObs")?.addEventListener("click", async () => {
     try {

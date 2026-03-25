@@ -193,6 +193,47 @@ async function syncInventoryMovements(tx, { logId, date, userId, movementPlan })
   });
 }
 
+async function createAutoObservationForFailedTask(tx, { log, task, userId }) {
+  const taskSubtasks = normalizeTaskSubtasks(task.subtasks);
+  const completedIds = Array.isArray(log.completedSubtasks) ? log.completedSubtasks.map(String) : [];
+  const requiredSubtasks = taskSubtasks.filter((s) => s.required !== false);
+  const completedRequiredCount = requiredSubtasks.filter((s) => completedIds.includes(String(s.id))).length;
+
+  const failedWholeTask = log.completed === false;
+  const incompleteRequiredSubtasks =
+    requiredSubtasks.length > 0 && completedRequiredCount < requiredSubtasks.length;
+
+  const shouldCreate = failedWholeTask || incompleteRequiredSubtasks;
+  if (!shouldCreate) return;
+
+  const existing = await tx.observation.findFirst({
+    where: {
+      date: log.date,
+      taskId: task.id,
+      createdById: userId,
+      title: { contains: task.name },
+      status: "OPEN",
+    },
+  });
+
+  if (existing) return;
+
+  await tx.observation.create({
+    data: {
+      date: log.date,
+      title: `Task issue: ${task.name}`,
+      description: failedWholeTask
+        ? `This task was marked as incomplete or failed during logging.`
+        : `Not all required subcomponents were completed for this task.`,
+      severity: "WARN",
+      animalTag: task.animalCategory || task.category || null,
+      taskId: task.id,
+      status: "OPEN",
+      createdById: userId,
+    },
+  });
+}
+
 router.get("/", requireAuth, async (req, res) => {
   try {
     const { date } = req.query;
@@ -263,7 +304,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     const newQty = q === null ? 0 : Math.round(q);
 
-    const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
       const approvalStatus = req.user.role === "ADMIN" ? "APPROVED" : "PENDING";
 
       const log = await tx.dailyLog.upsert({
@@ -319,6 +360,12 @@ router.post("/", requireAuth, async (req, res) => {
         date: day,
         userId: req.user.userId,
         movementPlan,
+      });
+
+      await createAutoObservationForFailedTask(tx, {
+        log,
+        task: log.task,
+        userId: req.user.userId,
       });
 
       return { log, inventoryFeedItems: touchedFeedItems };
@@ -393,7 +440,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
         ? Array.isArray(existing.completedSubtasks) ? existing.completedSubtasks : []
         : normalizeCompletedSubtasks(existing.task.subtasks, completedSubtasks);
 
-    const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
       const log = await tx.dailyLog.update({
         where: { id },
         data: {
@@ -406,6 +453,10 @@ router.patch("/:id", requireAuth, async (req, res) => {
         include: {
           task: {
             select: {
+              id: true,
+              name: true,
+              category: true,
+              animalCategory: true,
               affectsInventory: true,
               feedItemId: true,
               subtasks: true,
@@ -427,6 +478,12 @@ router.patch("/:id", requireAuth, async (req, res) => {
         date: log.date,
         userId: req.user.userId,
         movementPlan,
+      });
+
+      await createAutoObservationForFailedTask(tx, {
+        log,
+        task: log.task,
+        userId: req.user.userId,
       });
 
       return { log, inventoryFeedItems: touchedFeedItems };

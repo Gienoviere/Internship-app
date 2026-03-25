@@ -7,6 +7,16 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="/css/app.css">
+  <style>
+    .photo-preview {
+      width: 100%;
+      max-height: 220px;
+      object-fit: cover;
+      border-radius: .75rem;
+      border: 1px solid #dee2e6;
+      display: none;
+    }
+  </style>
 </head>
 <body>
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -28,31 +38,11 @@
       <aside class="col-md-3 col-lg-2 bg-white border-end min-vh-100">
         <div class="py-3">
           <ul class="nav nav-pills flex-column gap-1" id="sidebarNav">
-            <li class="nav-item">
-              <a class="nav-link" href="/index.html" data-page="index.html">
-                <i class="bi bi-speedometer2 me-2"></i>Dashboard
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/Tasks/tasks.html" data-page="tasks.html">
-                <i class="bi bi-list-check me-2"></i>Tasks
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/inventory/index.html" data-page="inventory.html">
-                <i class="bi bi-box-seam me-2"></i>Inventory
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link active" href="Observations.html" data-page="Observations.html">
-                <i class="bi bi-journal-text me-2"></i>Observations
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link text-dark" href="/manual/index.html">
-                <i class="bi bi-book me-2"></i>Manual
-              </a>
-            </li>
+            <li class="nav-item"><a class="nav-link" href="/index.html"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a></li>
+            <li class="nav-item"><a class="nav-link" href="/Tasks/tasks.html"><i class="bi bi-list-check me-2"></i>Tasks</a></li>
+            <li class="nav-item"><a class="nav-link" href="/inventory/index.html"><i class="bi bi-box-seam me-2"></i>Inventory</a></li>
+            <li class="nav-item"><a class="nav-link active" href="Observations.html"><i class="bi bi-journal-text me-2"></i>Observations</a></li>
+            <li class="nav-item"><a class="nav-link text-dark" href="/manual/index.html"><i class="bi bi-book me-2"></i>Manual</a></li>
           </ul>
         </div>
       </aside>
@@ -61,7 +51,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
           <div>
             <h1 class="h2 mb-0">Observations</h1>
-            <p class="text-muted mb-0">Record and review animal observations</p>
+            <p class="text-muted mb-0">Report issues with animals, food, care tasks, or daily farm events</p>
           </div>
         </div>
 
@@ -85,8 +75,20 @@
                   <option value="CRITICAL">CRITICAL</option>
                 </select>
               </div>
+              <div class="col-md-3">
+                <select id="obsTaskId3" class="form-select form-select-sm">
+                  <option value="">No linked task</option>
+                </select>
+              </div>
               <div class="col-md-12">
-                <textarea id="obsDesc3" class="form-control form-control-sm" rows="3" placeholder="Description (optional)"></textarea>
+                <textarea id="obsDesc3" class="form-control form-control-sm" rows="3" placeholder="Description"></textarea>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small">Photo</label>
+                <input id="obsPhoto3" type="file" class="form-control form-control-sm" accept="image/*">
+              </div>
+              <div class="col-md-12">
+                <img id="obsPhotoPreview3" class="photo-preview" alt="Observation preview">
               </div>
             </div>
 
@@ -138,6 +140,22 @@
           </div>
 
           <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select id="editObsStatus3" class="form-select">
+              <option value="OPEN">OPEN</option>
+              <option value="RESOLVED">RESOLVED</option>
+              <option value="IGNORED">IGNORED</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Linked task</label>
+            <select id="editObsTaskId3" class="form-select">
+              <option value="">No linked task</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
             <label class="form-label">Description</label>
             <textarea id="editObsDesc3" class="form-control" rows="4"></textarea>
           </div>
@@ -149,22 +167,6 @@
       </div>
     </div>
   </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-      const links = document.querySelectorAll('#sidebarNav .nav-link');
-
-      links.forEach(link => {
-        const page = link.getAttribute('data-page');
-        if (page === currentPage) {
-          link.classList.add('active');
-        } else {
-          link.classList.remove('active');
-        }
-      });
-    });
-  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="/js/observations-page.js"></script>

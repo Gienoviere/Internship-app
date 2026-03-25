@@ -53,9 +53,10 @@ router.get("/", requireAuth, async (req, res) => {
       },
       include: {
         createdBy: { select: { id: true, name: true, email: true, role: true } },
+        task: { select: { id: true, name: true } },
         photos: true,
       },
-      orderBy: [{ id: "desc" }],
+      orderBy: [{ severity: "desc" }, { id: "desc" }],
     });
 
     res.json(obs);
@@ -65,9 +66,37 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
+router.get("/critical-count", requireAuth, async (req, res) => {
+  try {
+    const count = await prisma.observation.count({
+      where: {
+        severity: "CRITICAL",
+        status: "OPEN",
+      },
+    });
+
+    const latest = await prisma.observation.findMany({
+      where: {
+        severity: "CRITICAL",
+        status: "OPEN",
+      },
+      include: {
+        task: { select: { id: true, name: true } },
+      },
+      orderBy: { id: "desc" },
+      take: 10,
+    });
+
+    res.json({ count, latest });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 router.post("/", requireAuth, async (req, res) => {
   try {
-    const { date, title, description, severity, animalTag } = req.body || {};
+    const { date, title, description, severity, animalTag, status, taskId } = req.body || {};
 
     if (!isValidISODateOnly(date)) {
       return res.status(400).json({ error: "date required: YYYY-MM-DD" });
@@ -81,6 +110,10 @@ router.post("/", requireAuth, async (req, res) => {
       ? String(severity)
       : "INFO";
 
+    const safeStatus = ["OPEN", "RESOLVED", "IGNORED"].includes(String(status))
+      ? String(status)
+      : "OPEN";
+
     const created = await prisma.observation.create({
       data: {
         date: day,
@@ -88,10 +121,13 @@ router.post("/", requireAuth, async (req, res) => {
         description: description ? String(description) : null,
         severity: sev,
         animalTag: animalTag ? String(animalTag) : null,
+        status: safeStatus,
+        taskId: taskId ? Number(taskId) : null,
         createdById: req.user.userId,
       },
       include: {
         createdBy: { select: { id: true, name: true, email: true, role: true } },
+        task: { select: { id: true, name: true } },
         photos: true,
       },
     });
@@ -149,10 +185,16 @@ router.patch("/:id", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const { title, description, severity, animalTag } = req.body || {};
-    const sev =
+    const { title, description, severity, animalTag, status, taskId } = req.body || {};
+
+    const safeSeverity =
       severity && ["INFO", "WARN", "CRITICAL"].includes(String(severity))
         ? String(severity)
+        : undefined;
+
+    const safeStatus =
+      status && ["OPEN", "RESOLVED", "IGNORED"].includes(String(status))
+        ? String(status)
         : undefined;
 
     const updated = await prisma.observation.update({
@@ -160,11 +202,14 @@ router.patch("/:id", requireAuth, async (req, res) => {
       data: {
         ...(title !== undefined ? { title: String(title).trim() } : {}),
         ...(description !== undefined ? { description: description ? String(description) : null } : {}),
-        ...(sev !== undefined ? { severity: sev } : {}),
+        ...(safeSeverity !== undefined ? { severity: safeSeverity } : {}),
         ...(animalTag !== undefined ? { animalTag: animalTag ? String(animalTag) : null } : {}),
+        ...(safeStatus !== undefined ? { status: safeStatus } : {}),
+        ...(taskId !== undefined ? { taskId: taskId ? Number(taskId) : null } : {}),
       },
       include: {
         createdBy: { select: { id: true, name: true, email: true, role: true } },
+        task: { select: { id: true, name: true } },
         photos: true,
       },
     });
