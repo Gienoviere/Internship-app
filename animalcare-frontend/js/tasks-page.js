@@ -2,10 +2,17 @@ import { api } from "./api.js";
 
 const state = {
   me: null,
+  role: "",
+  canManage: false,
   selectedDate: todayDateString(),
   tasks: [],
   categoryFilter: '',
+  feedItems: [],
 };
+
+function isManager() {
+  return state.canManage;
+}
 
 const els = {
   userRoleBadge: document.getElementById('userRoleBadge3'),
@@ -29,13 +36,80 @@ const els = {
   btnSaveLog: document.getElementById('btnSaveLog3'),
 };
 
+function normalizeFrontendSubtask(subtask, index = 0) {
+  if (!subtask) {
+    return {
+      id: `sub_${index}`,
+      title: "",
+      amount: null,
+      unit: "g",
+      feedItemId: null,
+      affectsInventory: false,
+      required: true,
+      sortOrder: index,
+    };
+  }
+
+  if (typeof subtask === "string") {
+    return {
+      id: `sub_${index}`,
+      title: subtask,
+      amount: null,
+      unit: "g",
+      feedItemId: null,
+      affectsInventory: false,
+      required: true,
+      sortOrder: index,
+    };
+  }
+
+  let title = subtask.title;
+  if (title && typeof title === "object") {
+    title = title.title || title.name || String(title);
+  }
+
+  return {
+    id: String(subtask.id || `sub_${index}`),
+    title: String(title || ""),
+    amount:
+      subtask.amount === null || subtask.amount === undefined || subtask.amount === ""
+        ? null
+        : Number(subtask.amount),
+    unit: String(subtask.unit || "g"),
+    feedItemId:
+      subtask.feedItemId === null || subtask.feedItemId === undefined || subtask.feedItemId === ""
+        ? null
+        : Number(subtask.feedItemId),
+    affectsInventory: Boolean(subtask.affectsInventory),
+    required: subtask.required !== false,
+    sortOrder: Number.isFinite(Number(subtask.sortOrder)) ? Number(subtask.sortOrder) : index,
+  };
+}
+
+function normalizeFrontendSubtasks(subtasks) {
+  if (!Array.isArray(subtasks)) return [];
+  return subtasks.map((sub, index) => normalizeFrontendSubtask(sub, index));
+}
+
 init().catch((err) => showAlert(err.message || 'Failed to load page', 'danger'));
 
 async function init() {
   wireEvents();
-  state.me = await api("/auth/me");
-  els.userRoleBadge.textContent = state.me.role || "Logged in";
+
+  const meRes = await api("/auth/me");
+  state.me = meRes?.user || meRes || null;
+  state.role = String(state.me?.role || "").toUpperCase();
+  state.canManage = state.role === "ADMIN" || state.role === "SUPERVISOR";
+
+  console.log("AUTH ME =", state.me);
+  console.log("ROLE =", state.role, "CAN MANAGE =", state.canManage);
+
+  els.userRoleBadge.textContent = state.me?.role || "Logged in";
   els.globalDate.value = state.selectedDate;
+
+  state.feedItems = await api("/inventory/feed-items");
+  addSubtaskRow("createTaskSubtasksWrap3", state.feedItems || []);
+
   await refresh();
 }
 
@@ -57,17 +131,51 @@ function wireEvents() {
   els.logPhoto?.addEventListener('change', () => previewFile(els.logPhoto, els.logPhotoPreview));
   els.quickLogPhoto?.addEventListener('change', () => previewFile(els.quickLogPhoto, els.quickLogPhotoPreview));
 
-  document.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-action="open-log"]');
-    if (!button) return;
-    const taskId = Number(button.dataset.taskId);
-    openLogModal(taskId);
+  document.addEventListener("click", async (event) => {
+    const logBtn = event.target.closest('[data-action="open-log"]');
+    if (logBtn) {
+      const taskId = Number(logBtn.dataset.taskId);
+      openLogModal(taskId);
+      return;
+    }
+
+    const editBtn = event.target.closest('[data-action="edit-task"]');
+    if (editBtn) {
+      const taskId = Number(editBtn.dataset.taskId);
+      openEditTaskModal(taskId);
+      return;
+    }
+
+    const deleteBtn = event.target.closest('[data-action="delete-task"]');
+    if (deleteBtn) {
+      const taskId = Number(deleteBtn.dataset.taskId);
+      await onDeleteTask(taskId);
+      return;
+    }
+  });
+
+  document.getElementById("btnUpdateTask3")?.addEventListener("click", onUpdateTask);
+  document.getElementById("btnAddEditSubtaskRow3")?.addEventListener("click", () => {
+    addSubtaskRow("editTaskSubtasksWrap3", state.feedItems || []);
+  });
+  document.getElementById("btnAddCreateSubtaskRow3")?.addEventListener("click", () => {
+    addSubtaskRow("createTaskSubtasksWrap3", state.feedItems || []);
   });
 }
 
 async function refresh() {
   const payload = await api(`/tasks/today?date=${encodeURIComponent(state.selectedDate)}`);
-  state.tasks = payload.tasks || [];
+
+  state.tasks = (payload.tasks || []).map((task) => ({
+    ...task,
+    taskName: task.taskName || task.name || "",
+    animalCategory: task.animalCategory || task.category || "Uncategorized",
+    subtasks: normalizeFrontendSubtasks(task.subtasks),
+    completedSubtasks: Array.isArray(task.completedSubtasks) ? task.completedSubtasks : [],
+  }));
+
+  console.log("TASKS TODAY =", state.tasks);
+
   fillCategoryFilters();
   renderSummary();
   renderTasks();
@@ -154,11 +262,19 @@ function renderCategorySection(category, tasks) {
 }
 
 function renderTaskCard(task) {
-  const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const subtasks = normalizeFrontendSubtasks(task.subtasks);
+  const completedIds = Array.isArray(task.completedSubtasks) ? task.completedSubtasks.map(String) : [];
+
   const subtaskBadges = subtasks.length
-    ? subtasks.map((sub) => {
-        const done = Array.isArray(task.completedSubtasks) && task.completedSubtasks.includes(sub);
-        return `<span class="badge rounded-pill text-bg-light border me-1 mb-1 subtask-chip ${done ? 'done' : ''}">${escapeHtml(sub)}</span>`;
+    ? subtasks.map((subObj) => {
+        const done = completedIds.includes(String(subObj.id));
+        const amountText =
+          subObj.amount !== null && subObj.amount !== undefined && subObj.amount !== ""
+            ? ` · ${subObj.amount}${subObj.unit || ""}`
+            : "";
+        return `<span class="badge rounded-pill text-bg-light border me-1 mb-1 subtask-chip ${done ? 'done' : ''}">
+          ${escapeHtml(subObj.title || "")}${escapeHtml(amountText)}
+        </span>`;
       }).join('')
     : '<span class="text-muted small">No subcomponents yet</span>';
 
@@ -191,8 +307,19 @@ function renderTaskCard(task) {
           <div class="small mb-2"><strong>Quantity:</strong> ${task.quantityGrams ?? '-'} grams</div>
           ${photoHtml}
 
-          <div class="mt-auto pt-3 d-flex gap-2">
-            <button class="btn btn-primary btn-sm" data-action="open-log" data-task-id="${task.taskId}">${task.logged ? 'Edit log' : 'Log task'}</button>
+          <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
+            <button class="btn btn-primary btn-sm" data-action="open-log" data-task-id="${task.taskId}">
+              ${task.logged ? 'Edit log' : 'Log task'}
+            </button>
+
+            ${isManager() ? `
+              <button class="btn btn-outline-secondary btn-sm" data-action="edit-task" data-task-id="${task.taskId}">
+                Edit task
+              </button>
+              <button class="btn btn-outline-danger btn-sm" data-action="delete-task" data-task-id="${task.taskId}">
+                Delete
+              </button>
+            ` : ""}
           </div>
         </div>
       </div>
@@ -204,21 +331,43 @@ function openLogModal(taskId) {
   const task = state.tasks.find((item) => item.taskId === taskId);
   if (!task) return;
 
-  document.getElementById('logTaskId3').value = task.taskId;
-  document.getElementById('logId3').value = task.logId || '';
-  document.getElementById('logTaskName3').value = task.taskName || '';
-  document.getElementById('logAnimalCategory3').value = task.animalCategory || task.category || '';
-  document.getElementById('logTaskDescription3').value = task.description || '';
-  document.getElementById('logQty3').value = task.quantityGrams ?? '';
-  document.getElementById('logNotes3').value = task.notes || '';
-  document.getElementById('logCompleted3').checked = Boolean(task.completed);
-  document.getElementById('logSubtasks3').innerHTML = buildSubtaskCheckboxes(task.subtasks, task.completedSubtasks);
-  els.logPhoto.value = '';
-  els.logPhotoPreview.style.display = task.photoUrl ? 'block' : 'none';
-  els.logPhotoPreview.src = task.photoUrl || '';
+  const logTaskId = document.getElementById("logTaskId3");
+  const logId = document.getElementById("logId3");
+  const logTaskName = document.getElementById("logTaskName3");
+  const logAnimalCategory = document.getElementById("logAnimalCategory3");
+  const logTaskDescription = document.getElementById("logTaskDescription3");
+  const logQty = document.getElementById("logQty3");
+  const logNotes = document.getElementById("logNotes3");
+  const logCompleted = document.getElementById("logCompleted3");
+  const logSubtasks = document.getElementById("logSubtasks3");
+  const logModal = document.getElementById("logModal3");
 
-  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal3'));
-  modal.show();
+  if (
+    !logTaskId || !logId || !logTaskName || !logAnimalCategory ||
+    !logTaskDescription || !logQty || !logNotes || !logCompleted ||
+    !logSubtasks || !logModal
+  ) {
+    showAlert("Log modal elements are missing from tasks.html", "danger");
+    return;
+  }
+
+  logTaskId.value = task.taskId;
+  logId.value = task.logId || "";
+  logTaskName.value = task.taskName || "";
+  logAnimalCategory.value = task.animalCategory || task.category || "";
+  logTaskDescription.value = task.description || "";
+  logQty.value = task.quantityGrams ?? "";
+  logNotes.value = task.notes || "";
+  logCompleted.checked = Boolean(task.completed);
+  logSubtasks.innerHTML = buildSubtaskCheckboxes(task.subtasks, task.completedSubtasks);
+
+  if (els.logPhoto) els.logPhoto.value = "";
+  if (els.logPhotoPreview) {
+    els.logPhotoPreview.style.display = task.photoUrl ? "block" : "none";
+    els.logPhotoPreview.src = task.photoUrl || "";
+  }
+
+  bootstrap.Modal.getOrCreateInstance(logModal).show();
 }
 
 async function onSaveLog() {
@@ -237,9 +386,15 @@ async function onSaveLog() {
     };
 
     if (logId) {
-      await api.updateLog(logId, payload);
+      await api(`/daily-logs/${logId}`, {
+        method: "PATCH",
+        json: payload,
+      });
     } else {
-      await api.createLog(payload);
+      await api("/daily-logs", {
+        method: "POST",
+        json: payload,
+      });
     }
 
     bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal3')).hide();
@@ -261,7 +416,7 @@ async function onCreateTask() {
       sortOrder: Number(document.getElementById("createTaskSortOrder3").value || 0),
       active: document.getElementById("createTaskActive3").checked,
       photoRequired: document.getElementById("createTaskRequirePhoto3").checked,
-      subtasks: textareaLines(document.getElementById("createTaskSubtasks3").value),
+      subtasks: collectSubtasks("createTaskSubtasksWrap3"),
     };
 
     await api("/tasks", { method: "POST", json: payload });
@@ -278,29 +433,44 @@ async function onQuickLogSubmit() {
     let taskId = Number(els.quickLogTask.value || 0);
 
     if (els.quickLogCustomToggle.checked) {
-      const newTask = await api.createTask({
-        name: document.getElementById('quickCustomTaskName3').value.trim(),
-        description: document.getElementById('quickCustomTaskDescription3').value.trim(),
-        category: document.getElementById('quickCustomAnimalCategory3').value.trim(),
-        animalCategory: document.getElementById('quickCustomAnimalCategory3').value.trim(),
-        isDaily: true,
-        active: true,
-        sortOrder: 0,
-        subtasks: textareaLines(document.getElementById('quickCustomSubtasks3').value),
+      const newTask = await api("/tasks", {
+        method: "POST",
+        json: {
+          name: document.getElementById('quickCustomTaskName3').value.trim(),
+          description: document.getElementById('quickCustomTaskDescription3').value.trim(),
+          category: document.getElementById('quickCustomAnimalCategory3').value.trim(),
+          animalCategory: document.getElementById('quickCustomAnimalCategory3').value.trim(),
+          isDaily: true,
+          active: true,
+          sortOrder: 0,
+          subtasks: textareaLines(document.getElementById('quickCustomSubtasks3').value).map((title, index) => ({
+            id: `sub_${Date.now()}_${index}`,
+            title,
+            amount: null,
+            unit: "g",
+            feedItemId: null,
+            affectsInventory: false,
+            required: true,
+            sortOrder: index,
+          })),
+        },
       });
       taskId = newTask.id;
     }
 
     if (!taskId) throw new Error('Select or create a task first.');
 
-    await api.createLog({
-      date: state.selectedDate,
-      taskId,
-      completed: document.getElementById('quickLogCompleted3').checked,
-      quantityGrams: toNullableNumber(document.getElementById('quickLogQty3').value),
-      notes: document.getElementById('quickLogNotes3').value.trim(),
-      completedSubtasks: [],
-      photoUrl: await fileToDataUrl(els.quickLogPhoto),
+    await api("/daily-logs", {
+      method: "POST",
+      json: {
+        date: state.selectedDate,
+        taskId,
+        completed: document.getElementById('quickLogCompleted3').checked,
+        quantityGrams: toNullableNumber(document.getElementById('quickLogQty3').value),
+        notes: document.getElementById('quickLogNotes3').value.trim(),
+        completedSubtasks: [],
+        photoUrl: await fileToDataUrl(els.quickLogPhoto),
+      },
     });
 
     bootstrap.Modal.getOrCreateInstance(document.getElementById('quickLogModal')).hide();
@@ -312,16 +482,28 @@ async function onQuickLogSubmit() {
 }
 
 function buildSubtaskCheckboxes(subtasks = [], completed = []) {
-  if (!Array.isArray(subtasks) || !subtasks.length) {
+  const normalizedSubtasks = normalizeFrontendSubtasks(subtasks);
+
+  if (!normalizedSubtasks.length) {
     return '<div class="text-muted small">No subcomponents added for this task.</div>';
   }
 
-  return subtasks.map((subtask, index) => `
-    <label class="form-check border rounded p-2">
-      <input class="form-check-input me-2" type="checkbox" value="${escapeAttr(subtask)}" ${completed?.includes(subtask) ? 'checked' : ''}>
-      <span class="form-check-label">${escapeHtml(subtask)}</span>
-    </label>
-  `).join('');
+  const completedIds = Array.isArray(completed) ? completed.map(String) : [];
+
+  return normalizedSubtasks.map((sub) => {
+    const checked = completedIds.includes(String(sub.id));
+    const amountText =
+      sub.amount !== null && sub.amount !== undefined && sub.amount !== ""
+        ? ` (${sub.amount}${sub.unit || ""})`
+        : "";
+
+    return `
+      <label class="form-check border rounded p-2">
+        <input class="form-check-input me-2" type="checkbox" value="${escapeAttr(String(sub.id))}" ${checked ? 'checked' : ''}>
+        <span class="form-check-label">${escapeHtml(sub.title || "")}${escapeHtml(amountText)}</span>
+      </label>
+    `;
+  }).join('');
 }
 
 function checkedValues(selector) {
@@ -427,4 +609,120 @@ function escapeHtml(value) {
 
 function escapeAttr(value) {
   return escapeHtml(value);
+}
+
+function addSubtaskRow(wrapId, feedItems = [], value = {}) {
+  const wrap = document.getElementById(wrapId);
+  const tpl = document.getElementById("taskSubtaskRowTemplate");
+  const node = tpl.content.firstElementChild.cloneNode(true);
+
+  const sub = normalizeFrontendSubtask(value);
+
+  node.dataset.subtaskId = sub.id;
+  node.querySelector(".subtask-title").value = sub.title || "";
+  node.querySelector(".subtask-amount").value = sub.amount ?? "";
+  node.querySelector(".subtask-unit").value = sub.unit || "g";
+  node.querySelector(".subtask-required").checked = sub.required !== false;
+  node.querySelector(".subtask-affectsInventory").checked = Boolean(sub.affectsInventory);
+
+  const feedSelect = node.querySelector(".subtask-feedItemId");
+  feedItems.forEach((item) => {
+    const opt = document.createElement("option");
+    opt.value = item.id;
+    opt.textContent = item.name;
+    feedSelect.appendChild(opt);
+  });
+  feedSelect.value = sub.feedItemId ?? "";
+
+  node.querySelector(".btn-remove-subtask").addEventListener("click", () => {
+    node.remove();
+  });
+
+  wrap.appendChild(node);
+}
+
+function collectSubtasks(wrapId) {
+  return [...document.querySelectorAll(`#${wrapId} .subtask-row`)]
+    .map((row, index) => ({
+      id: row.dataset.subtaskId || `sub_${Date.now()}_${index}`,
+      title: row.querySelector(".subtask-title").value.trim(),
+      amount: row.querySelector(".subtask-amount").value === ""
+        ? null
+        : Number(row.querySelector(".subtask-amount").value),
+      unit: row.querySelector(".subtask-unit").value,
+      feedItemId: row.querySelector(".subtask-feedItemId").value || null,
+      affectsInventory: row.querySelector(".subtask-affectsInventory").checked,
+      required: row.querySelector(".subtask-required").checked,
+      sortOrder: index,
+    }))
+    .filter((s) => s.title);
+}
+
+function openEditTaskModal(taskId) {
+  const task = state.tasks.find((item) => item.taskId === taskId);
+  if (!task) return;
+
+  document.getElementById("editTaskId3").value = task.taskId;
+  document.getElementById("editTaskName3").value = task.taskName || "";
+  document.getElementById("editTaskDescription3").value = task.description || "";
+  document.getElementById("editAnimalCategory3").value = task.animalCategory || task.category || "";
+  document.getElementById("editTaskDaily3").checked = Boolean(task.isDaily);
+  document.getElementById("editTaskSortOrder3").value = task.sortOrder ?? 0;
+  document.getElementById("editTaskActive3").checked = task.active !== false;
+  document.getElementById("editTaskRequirePhoto3").checked = Boolean(task.photoRequired);
+
+  const wrap = document.getElementById("editTaskSubtasksWrap3");
+  if (wrap) {
+    wrap.innerHTML = "";
+    normalizeFrontendSubtasks(task.subtasks).forEach((sub) => {
+      addSubtaskRow("editTaskSubtasksWrap3", state.feedItems || [], sub);
+    });
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("editTaskModal")).show();
+}
+
+async function onUpdateTask() {
+  try {
+    const taskId = Number(document.getElementById("editTaskId3").value);
+
+    const payload = {
+      name: document.getElementById("editTaskName3").value.trim(),
+      description: document.getElementById("editTaskDescription3").value.trim(),
+      category: document.getElementById("editAnimalCategory3").value.trim(),
+      animalCategory: document.getElementById("editAnimalCategory3").value.trim(),
+      isDaily: document.getElementById("editTaskDaily3").checked,
+      sortOrder: Number(document.getElementById("editTaskSortOrder3").value || 0),
+      active: document.getElementById("editTaskActive3").checked,
+      photoRequired: document.getElementById("editTaskRequirePhoto3").checked,
+      subtasks: collectSubtasks("editTaskSubtasksWrap3"),
+    };
+
+    await api(`/tasks/${taskId}`, {
+      method: "PATCH",
+      json: payload,
+    });
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("editTaskModal")).hide();
+    showAlert("Task updated.", "success");
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || "Could not update task", "danger");
+  }
+}
+
+async function onDeleteTask(taskId) {
+  const ok = window.confirm("Delete this task? It will be deactivated.");
+  if (!ok) return;
+
+  try {
+    await api(`/tasks/${taskId}`, {
+      method: "DELETE",
+    });
+
+    showAlert("Task deleted.", "success");
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || "Could not delete task", "danger");
+  }
 }

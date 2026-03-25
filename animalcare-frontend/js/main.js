@@ -45,6 +45,7 @@ export async function refreshAll() {
   // Caretaker/common panels
   await loadTasksToday(date);
   //await loadObservations(date);
+  await loadCriticalObservationKpi();
   //await loadQuickLogTasks(date);
   await loadDashboardSummary(date);
 
@@ -279,4 +280,35 @@ async function sendSummaryEmail() {
   }
 
   setAlert("success", "Summary email sent.");
+}
+
+async function loadCriticalObservationKpi() {
+  try {
+    const payload = await api("/observations/critical-count");
+
+    const countEl = document.getElementById("criticalObsCount3");
+    const listEl = document.getElementById("criticalObsList3");
+
+    if (countEl) {
+      countEl.textContent = payload.count ?? 0;
+    }
+
+    if (listEl) {
+      listEl.innerHTML = (payload.latest || []).length
+        ? payload.latest.map(obs => `
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-semibold">${obs.title}</div>
+                <div class="small text-muted">
+                  ${obs.animalTag || "—"}${obs.task ? ` · ${obs.task.name}` : ""}
+                </div>
+              </div>
+              <span class="badge bg-danger">${obs.severity}</span>
+            </li>
+          `).join("")
+        : `<li class="list-group-item text-muted">No open critical observations.</li>`;
+    }
+  } catch (err) {
+    console.error("Failed to load critical observation KPI:", err);
+  }
 }

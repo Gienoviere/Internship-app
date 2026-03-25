@@ -63,6 +63,7 @@ model Task {
   feedItem         FeedItem?        @relation(fields: [feedItemId], references: [id], onDelete: SetNull)
   assignments      TaskAssignment[]
   logs             DailyLog[]
+  observations    Observation[]
 
   @@index([animalCategory])
   @@index([category])
@@ -146,35 +147,37 @@ model InventoryMovement {
   reason     String
   refType    String?
   refId      Int?
+  lineKey    String?   // NEW: lets one DailyLog create multiple movements
   userId     Int?
 
   createdAt DateTime @default(now())
 
   feedItem FeedItem @relation(fields: [feedItemId], references: [id])
 
-  @@unique([refType, refId])
+  @@unique([refType, refId, lineKey])
   @@index([date])
   @@index([feedItemId])
 }
 
 model Observation {
-  id          Int      @id @default(autoincrement())
-  date        DateTime
-  title       String
-  description String?
-  severity    String   @default("INFO") // INFO | WARN | CRITICAL
+  id            Int      @id @default(autoincrement())
+  date          DateTime
+  title         String
+  description   String?
+  severity      String
+  animalTag     String?
+  status        String   @default("OPEN") // OPEN, RESOLVED, IGNORED
 
-  animalTag   String? // optional: "Pig pen 1", "Chicken coop"
-  createdById Int
-  createdBy   User    @relation("UserObservations", fields: [createdById], references: [id])
+  taskId        Int?
+  task          Task?    @relation(fields: [taskId], references: [id])
 
-  photos ObservationPhoto[]
+  createdById   Int
+  createdBy     User     @relation(fields: [createdById], references: [id])
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  photos        ObservationPhoto[]
 
-  @@index([date])
-  @@index([createdById])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model ObservationPhoto {

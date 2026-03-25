@@ -1,7 +1,12 @@
 import { isoToday, api } from "./api.js";
 import { state } from "./state.js";
-import { loadObservations, createObservation } from "./observations.js";
-import { wireQuickLogShared } from "./quick-log.js";
+import {
+  loadObservations,
+  createObservation,
+  updateObservation,
+  wireObservationPhotoPreview,
+  loadTaskOptions,
+} from "./observations.js";
 
 function $(id) {
   return document.getElementById(id);
@@ -19,22 +24,15 @@ function setAlert(type, msg) {
 function setRoleBadge() {
   const badge = $("userRoleBadgeObs");
   if (!badge) return;
-
-  if (!state.currentUser) {
-    badge.textContent = "Not logged in";
-    return;
-  }
-
-  badge.textContent = state.currentUser.role || "Unknown role";
+  badge.textContent = state.currentUser?.role || "Not logged in";
 }
 
 async function refreshObservationsPage() {
   const date = $("globalDateObs")?.value || isoToday();
-
   const me = await api("/auth/me");
   state.currentUser = me.user || me;
-
   setRoleBadge();
+  await loadTaskOptions();
   await loadObservations(date);
 }
 
@@ -42,6 +40,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if ($("globalDateObs")) {
     $("globalDateObs").value = isoToday();
   }
+
+  wireObservationPhotoPreview();
 
   $("btnRefreshObs")?.addEventListener("click", async () => {
     try {
@@ -70,7 +70,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  $("btnLogoutObs")?.addEventListener("click", () => {
+  $("btnUpdateObs3")?.addEventListener("click", async () => {
+    try {
+      const date = $("globalDateObs")?.value || isoToday();
+      await updateObservation(date);
+    } catch (e) {
+      setAlert("danger", e.message || "Could not update observation");
+    }
+  });
+
+  $("btnLogout3")?.addEventListener("click", () => {
     localStorage.removeItem("token");
     window.location.href = "/index.html";
   });
@@ -80,6 +89,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     setAlert("danger", e.message || "Failed to load observations.");
   }
-
-  wireQuickLogShared(refreshTasksPage);
 });

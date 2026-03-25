@@ -15,14 +15,223 @@ function isValidISODateOnly(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-function normalizeStringArray(value) {
+function normalizeTaskSubtasks(value) {
   if (!Array.isArray(value)) return [];
-  return value.map((entry) => String(entry || "").trim()).filter(Boolean);
+  return value
+    .map((item, index) => {
+      if (typeof item === "string") {
+        const title = item.trim();
+        if (!title) return null;
+        return {
+          id: `sub_${index + 1}`,
+          title,
+          amount: null,
+          unit: "g",
+          feedItemId: null,
+          affectsInventory: false,
+          required: true,
+          sortOrder: index,
+        };
+      }
+      if (!item || typeof item !== "object") return null;
+
+      const title = String(item.title || "").trim();
+      if (!title) return null;
+
+      return {
+        id: String(item.id || `sub_${index + 1}`),
+        title,
+        amount:
+          item.amount === null || item.amount === undefined || item.amount === ""
+            ? null
+            : Number(item.amount),
+        unit: String(item.unit || "g").trim() || "g",
+        feedItemId:
+          item.feedItemId === null ||
+          item.feedItemId === undefined ||
+          item.feedItemId === ""
+            ? null
+            : Number(item.feedItemId),
+        affectsInventory: Boolean(item.affectsInventory),
+        required: item.required === undefined ? true : Boolean(item.required),
+        sortOrder: Number.isFinite(Number(item.sortOrder)) ? Number(item.sortOrder) : index,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
-function filterAllowedSubtasks(taskSubtasks, completedSubtasks) {
-  const allowed = new Set(normalizeStringArray(Array.isArray(taskSubtasks) ? taskSubtasks : []));
-  return normalizeStringArray(completedSubtasks).filter((entry) => allowed.has(entry));
+function normalizeCompletedSubtasks(taskSubtasks, completedSubtasks) {
+  const allowedIds = new Set(normalizeTaskSubtasks(taskSubtasks).map((s) => String(s.id)));
+  if (!Array.isArray(completedSubtasks)) return [];
+  return completedSubtasks
+    .map((entry) => String(entry || "").trim())
+    .filter((entry) => allowedIds.has(entry));
+}
+
+function unitToGrams(amount, unit) {
+  if (amount === null || amount === undefined || amount === "") return 0;
+  const n = Number(amount);
+  if (!Number.isFinite(n) || n < 0) return 0;
+
+  const u = String(unit || "g").toLowerCase();
+  if (u === "kg") return Math.round(n * 1000);
+  if (u === "g" || u === "gram" || u === "grams") return Math.round(n);
+
+  return 0;
+}
+
+function buildMovementPlan(task, completedSubtasks, fallbackQuantityGrams) {
+  const plan = [];
+  const subtasks = normalizeTaskSubtasks(task.subtasks);
+  const completedIds = new Set(normalizeCompletedSubtasks(subtasks, completedSubtasks));
+
+  for (const sub of subtasks) {
+    if (!completedIds.has(String(sub.id))) continue;
+    if (!sub.affectsInventory || !sub.feedItemId) continue;
+
+    const grams = unitToGrams(sub.amount, sub.unit);
+    if (grams <= 0) continue;
+
+    plan.push({
+      lineKey: `subtask:${sub.id}`,
+      feedItemId: Number(sub.feedItemId),
+      deltaGrams: -grams,
+      reason: "daily-log-subtask",
+    });
+  }
+
+  if (
+    plan.length === 0 &&
+    task.affectsInventory &&
+    task.feedItemId &&
+    fallbackQuantityGrams !== null &&
+    fallbackQuantityGrams !== undefined
+  ) {
+    const q = Number(fallbackQuantityGrams);
+    if (Number.isFinite(q) && q > 0) {
+      plan.push({
+        lineKey: "__task__",
+        feedItemId: Number(task.feedItemId),
+        deltaGrams: -Math.round(q),
+        reason: "daily-log",
+      });
+    }
+  }
+
+  return plan;
+}
+
+async function syncInventoryMovements(tx, { logId, date, userId, movementPlan }) {
+  const existing = await tx.inventoryMovement.findMany({
+    where: { refType: "DailyLog", refId: logId },
+  });
+
+  const existingByKey = new Map(existing.map((m) => [String(m.lineKey || "__task__"), m]));
+  const nextKeys = new Set(movementPlan.map((m) => String(m.lineKey)));
+
+  const touchedFeedItems = new Set();
+
+  for (const desired of movementPlan) {
+    const key = String(desired.lineKey);
+    const prev = existingByKey.get(key);
+    const prevDelta = prev ? prev.deltaGrams : 0;
+    const changeDelta = desired.deltaGrams - prevDelta;
+
+    if (prev) {
+      await tx.inventoryMovement.update({
+        where: { id: prev.id },
+        data: {
+          feedItemId: desired.feedItemId,
+          date,
+          deltaGrams: desired.deltaGrams,
+          reason: desired.reason,
+          userId,
+        },
+      });
+    } else {
+      await tx.inventoryMovement.create({
+        data: {
+          feedItemId: desired.feedItemId,
+          date,
+          deltaGrams: desired.deltaGrams,
+          reason: desired.reason,
+          refType: "DailyLog",
+          refId: logId,
+          lineKey: key,
+          userId,
+        },
+      });
+    }
+
+    if (changeDelta !== 0) {
+      await tx.feedItem.update({
+        where: { id: desired.feedItemId },
+        data: { stockGrams: { increment: changeDelta } },
+      });
+    }
+
+    touchedFeedItems.add(desired.feedItemId);
+  }
+
+  for (const prev of existing) {
+    const key = String(prev.lineKey || "__task__");
+    if (nextKeys.has(key)) continue;
+
+    await tx.feedItem.update({
+      where: { id: prev.feedItemId },
+      data: { stockGrams: { increment: -prev.deltaGrams } },
+    });
+
+    await tx.inventoryMovement.delete({ where: { id: prev.id } });
+    touchedFeedItems.add(prev.feedItemId);
+  }
+
+  if (!touchedFeedItems.size) return [];
+  return tx.feedItem.findMany({
+    where: { id: { in: [...touchedFeedItems] } },
+  });
+}
+
+async function createAutoObservationForFailedTask(tx, { log, task, userId }) {
+  const taskSubtasks = normalizeTaskSubtasks(task.subtasks);
+  const completedIds = Array.isArray(log.completedSubtasks) ? log.completedSubtasks.map(String) : [];
+  const requiredSubtasks = taskSubtasks.filter((s) => s.required !== false);
+  const completedRequiredCount = requiredSubtasks.filter((s) => completedIds.includes(String(s.id))).length;
+
+  const failedWholeTask = log.completed === false;
+  const incompleteRequiredSubtasks =
+    requiredSubtasks.length > 0 && completedRequiredCount < requiredSubtasks.length;
+
+  const shouldCreate = failedWholeTask || incompleteRequiredSubtasks;
+  if (!shouldCreate) return;
+
+  const existing = await tx.observation.findFirst({
+    where: {
+      date: log.date,
+      taskId: task.id,
+      createdById: userId,
+      title: { contains: task.name },
+      status: "OPEN",
+    },
+  });
+
+  if (existing) return;
+
+  await tx.observation.create({
+    data: {
+      date: log.date,
+      title: `Task issue: ${task.name}`,
+      description: failedWholeTask
+        ? `This task was marked as incomplete or failed during logging.`
+        : `Not all required subcomponents were completed for this task.`,
+      severity: "WARN",
+      animalTag: task.animalCategory || task.category || null,
+      taskId: task.id,
+      status: "OPEN",
+      createdById: userId,
+    },
+  });
 }
 
 router.get("/", requireAuth, async (req, res) => {
@@ -71,8 +280,8 @@ router.post("/", requireAuth, async (req, res) => {
     if (!isValidISODateOnly(date)) {
       return res.status(400).json({ error: "date is required: YYYY-MM-DD" });
     }
-    const day = toDateOnlyUTC(date);
 
+    const day = toDateOnlyUTC(date);
     const tId = Number(taskId);
     if (!Number.isInteger(tId)) {
       return res.status(400).json({ error: "taskId must be an integer" });
@@ -82,7 +291,8 @@ router.post("/", requireAuth, async (req, res) => {
     if (!task) return res.status(404).json({ error: "Task not found" });
     if (!task.active) return res.status(400).json({ error: "Task is inactive" });
 
-    const normalizedCompletedSubtasks = filterAllowedSubtasks(task.subtasks, completedSubtasks);
+    const normalizedCompletedSubtasks = normalizeCompletedSubtasks(task.subtasks, completedSubtasks);
+
     if (task.photoRequired && !photoUrl) {
       return res.status(400).json({ error: "A photo is required for this task" });
     }
@@ -94,7 +304,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     const newQty = q === null ? 0 : Math.round(q);
 
-    const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
       const approvalStatus = req.user.role === "ADMIN" ? "APPROVED" : "PENDING";
 
       const log = await tx.dailyLog.upsert({
@@ -133,60 +343,45 @@ router.post("/", requireAuth, async (req, res) => {
               animalCategory: true,
               affectsInventory: true,
               feedItemId: true,
+              subtasks: true,
             },
           },
         },
       });
 
-      let inventory = null;
+      const movementPlan = buildMovementPlan(
+        log.task,
+        normalizedCompletedSubtasks,
+        newQty
+      );
 
-      if (log.task.affectsInventory && log.task.feedItemId) {
-        const desiredConsumed = newQty;
-        const desiredDelta = -desiredConsumed;
+      const touchedFeedItems = await syncInventoryMovements(tx, {
+        logId: log.id,
+        date: day,
+        userId: req.user.userId,
+        movementPlan,
+      });
 
-        const existingMove = await tx.inventoryMovement.findUnique({
-          where: { refType_refId: { refType: "DailyLog", refId: log.id } },
-        });
+      await createAutoObservationForFailedTask(tx, {
+        log,
+        task: log.task,
+        userId: req.user.userId,
+      });
 
-        const prevDelta = existingMove ? existingMove.deltaGrams : 0;
-        const changeDelta = desiredDelta - prevDelta;
-
-        if (changeDelta !== 0) {
-          const movement = await tx.inventoryMovement.upsert({
-            where: { refType_refId: { refType: "DailyLog", refId: log.id } },
-            create: {
-              feedItemId: log.task.feedItemId,
-              date: day,
-              deltaGrams: desiredDelta,
-              reason: "daily-log",
-              refType: "DailyLog",
-              refId: log.id,
-              userId: req.user.userId,
-            },
-            update: {
-              feedItemId: log.task.feedItemId,
-              date: day,
-              deltaGrams: desiredDelta,
-            },
-          });
-
-          const updatedItem = await tx.feedItem.update({
-            where: { id: log.task.feedItemId },
-            data: { stockGrams: { increment: changeDelta } },
-          });
-
-          inventory = { movement, feedItem: updatedItem };
-        }
-      }
-
-      return { log, inventory };
+      return { log, inventoryFeedItems: touchedFeedItems };
     });
 
     try {
-      const feedItem = result.inventory?.feedItem;
       const threshold = 5000;
-      if (feedItem && feedItem.stockGrams <= threshold) {
-        await createRestockEventForUser(req.user.userId, feedItem.name, feedItem.stockGrams, threshold);
+      for (const feedItem of result.inventoryFeedItems || []) {
+        if (feedItem.stockGrams <= threshold) {
+          await createRestockEventForUser(
+            req.user.userId,
+            feedItem.name,
+            feedItem.stockGrams,
+            threshold
+          );
+        }
       }
     } catch (err) {
       console.error("Calendar event creation failed after daily log:", err.message);
@@ -196,7 +391,7 @@ router.post("/", requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: "Server error. Check that completedSubtasks and photoUrl exist in Prisma.",
+      error: "Server error. Check Prisma fields and inventory movement lineKey migration.",
     });
   }
 });
@@ -211,7 +406,14 @@ router.patch("/:id", requireAuth, async (req, res) => {
     const existing = await prisma.dailyLog.findUnique({
       where: { id },
       include: {
-        task: { select: { affectsInventory: true, feedItemId: true, photoRequired: true, subtasks: true } },
+        task: {
+          select: {
+            affectsInventory: true,
+            feedItemId: true,
+            photoRequired: true,
+            subtasks: true,
+          },
+        },
       },
     });
 
@@ -233,75 +435,71 @@ router.patch("/:id", requireAuth, async (req, res) => {
     }
 
     const newQty = q === undefined ? undefined : Math.round(q);
-    const safeCompletedSubtasks = completedSubtasks === undefined
-      ? undefined
-      : filterAllowedSubtasks(existing.task.subtasks, completedSubtasks);
+    const safeCompletedSubtasks =
+      completedSubtasks === undefined
+        ? Array.isArray(existing.completedSubtasks) ? existing.completedSubtasks : []
+        : normalizeCompletedSubtasks(existing.task.subtasks, completedSubtasks);
 
-    const result = await prisma.$transaction(async (tx) => {
+        const result = await prisma.$transaction(async (tx) => {
       const log = await tx.dailyLog.update({
         where: { id },
         data: {
           ...(completed !== undefined ? { completed: Boolean(completed) } : {}),
           ...(newQty !== undefined ? { quantityGrams: newQty === 0 ? null : newQty } : {}),
           ...(notes !== undefined ? { notes: notes ? String(notes) : null } : {}),
-          ...(safeCompletedSubtasks !== undefined ? { completedSubtasks: safeCompletedSubtasks } : {}),
+          ...(completedSubtasks !== undefined ? { completedSubtasks: safeCompletedSubtasks } : {}),
           ...(photoUrl !== undefined ? { photoUrl: nextPhotoUrl } : {}),
         },
         include: {
-          task: { select: { affectsInventory: true, feedItemId: true } },
+          task: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              animalCategory: true,
+              affectsInventory: true,
+              feedItemId: true,
+              subtasks: true,
+            },
+          },
         },
       });
 
-      let inventory = null;
-      if (newQty === undefined) return { log, inventory };
+      const effectiveQty = newQty === undefined ? log.quantityGrams : newQty;
 
-      if (log.task.affectsInventory && log.task.feedItemId) {
-        const desiredConsumed = newQty;
-        const desiredDelta = -desiredConsumed;
+      const movementPlan = buildMovementPlan(
+        log.task,
+        safeCompletedSubtasks,
+        effectiveQty
+      );
 
-        const existingMove = await tx.inventoryMovement.findUnique({
-          where: { refType_refId: { refType: "DailyLog", refId: log.id } },
-        });
+      const touchedFeedItems = await syncInventoryMovements(tx, {
+        logId: log.id,
+        date: log.date,
+        userId: req.user.userId,
+        movementPlan,
+      });
 
-        const prevDelta = existingMove ? existingMove.deltaGrams : 0;
-        const changeDelta = desiredDelta - prevDelta;
+      await createAutoObservationForFailedTask(tx, {
+        log,
+        task: log.task,
+        userId: req.user.userId,
+      });
 
-        if (changeDelta !== 0) {
-          const movement = await tx.inventoryMovement.upsert({
-            where: { refType_refId: { refType: "DailyLog", refId: log.id } },
-            create: {
-              feedItemId: log.task.feedItemId,
-              date: log.date,
-              deltaGrams: desiredDelta,
-              reason: "daily-log",
-              refType: "DailyLog",
-              refId: log.id,
-              userId: req.user.userId,
-            },
-            update: {
-              feedItemId: log.task.feedItemId,
-              date: log.date,
-              deltaGrams: desiredDelta,
-            },
-          });
-
-          const updatedItem = await tx.feedItem.update({
-            where: { id: log.task.feedItemId },
-            data: { stockGrams: { increment: changeDelta } },
-          });
-
-          inventory = { movement, feedItem: updatedItem };
-        }
-      }
-
-      return { log, inventory };
+      return { log, inventoryFeedItems: touchedFeedItems };
     });
 
     try {
-      const feedItem = result.inventory?.feedItem;
       const threshold = 5000;
-      if (feedItem && feedItem.stockGrams <= threshold) {
-        await createRestockEventForUser(req.user.userId, feedItem.name, feedItem.stockGrams, threshold);
+      for (const feedItem of result.inventoryFeedItems || []) {
+        if (feedItem.stockGrams <= threshold) {
+          await createRestockEventForUser(
+            req.user.userId,
+            feedItem.name,
+            feedItem.stockGrams,
+            threshold
+          );
+        }
       }
     } catch (err) {
       console.error("Calendar event creation failed after daily log edit:", err.message);
@@ -311,7 +509,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: "Server error. Check that completedSubtasks and photoUrl exist in Prisma.",
+      error: "Server error. Check Prisma fields and inventory movement lineKey migration.",
     });
   }
 });
