@@ -1,7 +1,10 @@
 import { isoToday, api } from "./api.js";
 import { state } from "./state.js";
-import { loadObservations, createObservation } from "./observations.js";
-import { wireQuickLogShared } from "./quick-log.js";
+import {
+  loadObservations,
+  createObservation,
+  updateObservation,
+} from "./observations.js";
 
 function $(id) {
   return document.getElementById(id);
@@ -70,7 +73,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  $("btnLogoutObs")?.addEventListener("click", () => {
+  $("btnUpdateObs3")?.addEventListener("click", async () => {
+    try {
+      const date = $("globalDateObs")?.value || isoToday();
+      await updateObservation(date);
+    } catch (e) {
+      setAlert("danger", e.message || "Could not update observation");
+    }
+  });
+
+  $("btnLogout3")?.addEventListener("click", () => {
     localStorage.removeItem("token");
     window.location.href = "/index.html";
   });
@@ -80,6 +92,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   } catch (e) {
     setAlert("danger", e.message || "Failed to load observations.");
   }
-
-  wireQuickLogShared(refreshTasksPage);
 });
