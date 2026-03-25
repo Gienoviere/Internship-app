@@ -5,6 +5,7 @@ const state = {
   selectedDate: todayDateString(),
   tasks: [],
   categoryFilter: '',
+  feedItems: [],
 };
 
 const els = {
@@ -36,6 +37,7 @@ async function init() {
   state.me = await api("/auth/me");
   els.userRoleBadge.textContent = state.me.role || "Logged in";
   els.globalDate.value = state.selectedDate;
+  state.feedItems = await api("/inventory/feed-items");
   await refresh();
 }
 
@@ -57,11 +59,35 @@ function wireEvents() {
   els.logPhoto?.addEventListener('change', () => previewFile(els.logPhoto, els.logPhotoPreview));
   els.quickLogPhoto?.addEventListener('change', () => previewFile(els.quickLogPhoto, els.quickLogPhotoPreview));
 
-  document.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-action="open-log"]');
-    if (!button) return;
-    const taskId = Number(button.dataset.taskId);
-    openLogModal(taskId);
+  document.addEventListener("click", async (event) => {
+    const logBtn = event.target.closest('[data-action="open-log"]');
+    if (logBtn) {
+      const taskId = Number(logBtn.dataset.taskId);
+      openLogModal(taskId);
+      return;
+    }
+
+    const editBtn = event.target.closest('[data-action="edit-task"]');
+    if (editBtn) {
+      const taskId = Number(editBtn.dataset.taskId);
+      openEditTaskModal(taskId);
+      return;
+    }
+
+    const deleteBtn = event.target.closest('[data-action="delete-task"]');
+    if (deleteBtn) {
+      const taskId = Number(deleteBtn.dataset.taskId);
+      await onDeleteTask(taskId);
+      return;
+    }
+  });
+
+  document.getElementById("btnUpdateTask3")?.addEventListener("click", onUpdateTask);
+  document.getElementById("btnAddEditSubtaskRow3")?.addEventListener("click", () => {
+    addSubtaskRow("editTaskSubtasksWrap3", state.feedItems || []);
+  });
+  document.getElementById("btnAddCreateSubtaskRow3")?.addEventListener("click", () => {
+    addSubtaskRow("createTaskSubtasksWrap3", state.feedItems || []);
   });
 }
 
@@ -204,21 +230,43 @@ function openLogModal(taskId) {
   const task = state.tasks.find((item) => item.taskId === taskId);
   if (!task) return;
 
-  document.getElementById('logTaskId3').value = task.taskId;
-  document.getElementById('logId3').value = task.logId || '';
-  document.getElementById('logTaskName3').value = task.taskName || '';
-  document.getElementById('logAnimalCategory3').value = task.animalCategory || task.category || '';
-  document.getElementById('logTaskDescription3').value = task.description || '';
-  document.getElementById('logQty3').value = task.quantityGrams ?? '';
-  document.getElementById('logNotes3').value = task.notes || '';
-  document.getElementById('logCompleted3').checked = Boolean(task.completed);
-  document.getElementById('logSubtasks3').innerHTML = buildSubtaskCheckboxes(task.subtasks, task.completedSubtasks);
-  els.logPhoto.value = '';
-  els.logPhotoPreview.style.display = task.photoUrl ? 'block' : 'none';
-  els.logPhotoPreview.src = task.photoUrl || '';
+  const logTaskId = document.getElementById("logTaskId3");
+  const logId = document.getElementById("logId3");
+  const logTaskName = document.getElementById("logTaskName3");
+  const logAnimalCategory = document.getElementById("logAnimalCategory3");
+  const logTaskDescription = document.getElementById("logTaskDescription3");
+  const logQty = document.getElementById("logQty3");
+  const logNotes = document.getElementById("logNotes3");
+  const logCompleted = document.getElementById("logCompleted3");
+  const logSubtasks = document.getElementById("logSubtasks3");
+  const logModal = document.getElementById("logModal3");
 
-  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal3'));
-  modal.show();
+  if (
+    !logTaskId || !logId || !logTaskName || !logAnimalCategory ||
+    !logTaskDescription || !logQty || !logNotes || !logCompleted ||
+    !logSubtasks || !logModal
+  ) {
+    showAlert("Log modal elements are missing from tasks.html", "danger");
+    return;
+  }
+
+  logTaskId.value = task.taskId;
+  logId.value = task.logId || "";
+  logTaskName.value = task.taskName || "";
+  logAnimalCategory.value = task.animalCategory || task.category || "";
+  logTaskDescription.value = task.description || "";
+  logQty.value = task.quantityGrams ?? "";
+  logNotes.value = task.notes || "";
+  logCompleted.checked = Boolean(task.completed);
+  logSubtasks.innerHTML = buildSubtaskCheckboxes(task.subtasks, task.completedSubtasks);
+
+  if (els.logPhoto) els.logPhoto.value = "";
+  if (els.logPhotoPreview) {
+    els.logPhotoPreview.style.display = task.photoUrl ? "block" : "none";
+    els.logPhotoPreview.src = task.photoUrl || "";
+  }
+
+  bootstrap.Modal.getOrCreateInstance(logModal).show();
 }
 
 async function onSaveLog() {
@@ -237,9 +285,15 @@ async function onSaveLog() {
     };
 
     if (logId) {
-      await api.updateLog(logId, payload);
+      await api(`/daily-logs/${logId}`, {
+        method: "PATCH",
+        json: payload,
+      });
     } else {
-      await api.createLog(payload);
+      await api("/daily-logs", {
+        method: "POST",
+        json: payload,
+      });
     }
 
     bootstrap.Modal.getOrCreateInstance(document.getElementById('logModal3')).hide();
@@ -473,21 +527,70 @@ function collectSubtasks(wrapId) {
     .filter((s) => s.title);
 }
 
-// edit task option
-await api(`/tasks/${taskId}`, {
-  method: "PATCH",
-  json: {
-    name,
-    description,
-    category,
-    animalCategory,
-    isDaily,
-    sortOrder,
-    active,
-    photoRequired,
-    subtasks: collectSubtasks("editTaskSubtasksWrap3"),
-  },
-});
+function openEditTaskModal(taskId) {
+  const task = state.tasks.find((item) => item.taskId === taskId);
+  if (!task) return;
 
-// delete task option
-await api(`/tasks/${taskId}`, { method: "DELETE" });
+  document.getElementById("editTaskId3").value = task.taskId;
+  document.getElementById("editTaskName3").value = task.taskName || "";
+  document.getElementById("editTaskDescription3").value = task.description || "";
+  document.getElementById("editAnimalCategory3").value = task.animalCategory || task.category || "";
+  document.getElementById("editTaskDaily3").checked = Boolean(task.isDaily);
+  document.getElementById("editTaskSortOrder3").value = task.sortOrder ?? 0;
+  document.getElementById("editTaskActive3").checked = task.active !== false;
+  document.getElementById("editTaskRequirePhoto3").checked = Boolean(task.photoRequired);
+
+  const wrap = document.getElementById("editTaskSubtasksWrap3");
+  if (wrap) {
+    wrap.innerHTML = "";
+    const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+    subtasks.forEach((sub) => addSubtaskRow("editTaskSubtasksWrap3", state.feedItems || [], typeof sub === "string" ? { title: sub } : sub));
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("editTaskModal")).show();
+}
+
+async function onUpdateTask() {
+  try {
+    const taskId = Number(document.getElementById("editTaskId3").value);
+
+    const payload = {
+      name: document.getElementById("editTaskName3").value.trim(),
+      description: document.getElementById("editTaskDescription3").value.trim(),
+      category: document.getElementById("editAnimalCategory3").value.trim(),
+      animalCategory: document.getElementById("editAnimalCategory3").value.trim(),
+      isDaily: document.getElementById("editTaskDaily3").checked,
+      sortOrder: Number(document.getElementById("editTaskSortOrder3").value || 0),
+      active: document.getElementById("editTaskActive3").checked,
+      photoRequired: document.getElementById("editTaskRequirePhoto3").checked,
+      subtasks: collectSubtasks("editTaskSubtasksWrap3"),
+    };
+
+    await api(`/tasks/${taskId}`, {
+      method: "PATCH",
+      json: payload,
+    });
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("editTaskModal")).hide();
+    showAlert("Task updated.", "success");
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || "Could not update task", "danger");
+  }
+}
+
+async function onDeleteTask(taskId) {
+  const ok = window.confirm("Delete this task? It will be deactivated.");
+  if (!ok) return;
+
+  try {
+    await api(`/tasks/${taskId}`, {
+      method: "DELETE",
+    });
+
+    showAlert("Task deleted.", "success");
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || "Could not delete task", "danger");
+  }
+}

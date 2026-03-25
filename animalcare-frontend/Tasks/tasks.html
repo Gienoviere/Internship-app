@@ -298,50 +298,78 @@
           <h5 class="modal-title">Create task</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
-        <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-md-6">
-              <label class="form-label">Task name</label>
-              <input type="text" class="form-control" id="createTaskName3" placeholder="Example: Feed guinea pigs">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">Animal category</label>
-              <input type="text" class="form-control" id="createAnimalCategory3" placeholder="Example: Guinea pigs">
-            </div>
-            <div class="col-12">
-              <label class="form-label">Description</label>
-              <textarea class="form-control" id="createTaskDescription3" rows="3"></textarea>
-            </div>
-            <div class="col-12">
-              <label class="form-label">Subcomponents (one per line)</label>
-              <textarea class="form-control" id="createTaskSubtasks3" rows="5" placeholder="Prepare food&#10;Give fresh water&#10;Check enclosure"></textarea>
-            </div>
-            <div class="col-md-3">
-              <label class="form-label">Sort order</label>
-              <input type="number" class="form-control" id="createTaskSortOrder3" value="0">
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="createTaskDaily3" checked>
-                <label class="form-check-label" for="createTaskDaily3">Daily task</label>
-              </div>
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="createTaskRequirePhoto3">
-                <label class="form-check-label" for="createTaskRequirePhoto3">Photo required</label>
-              </div>
-            </div>
-            <div class="col-md-3 d-flex align-items-end">
-              <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="createTaskActive3" checked>
-                <label class="form-check-label" for="createTaskActive3">Active</label>
-              </div>
+        <div class="modal fade" id="editTaskModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit task</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editTaskId3">
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Task name</label>
+            <input type="text" class="form-control" id="editTaskName3">
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label">Animal category</label>
+            <input type="text" class="form-control" id="editAnimalCategory3">
+          </div>
+
+          <div class="col-12">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="editTaskDescription3" rows="3"></textarea>
+          </div>
+
+          <div class="col-md-3">
+            <label class="form-label">Sort order</label>
+            <input type="number" class="form-control" id="editTaskSortOrder3" value="0">
+          </div>
+
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="editTaskDaily3" checked>
+              <label class="form-check-label" for="editTaskDaily3">Daily</label>
             </div>
           </div>
+
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="editTaskActive3" checked>
+              <label class="form-check-label" for="editTaskActive3">Active</label>
+            </div>
+          </div>
+
+          <div class="col-md-3 d-flex align-items-end">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="editTaskRequirePhoto3">
+              <label class="form-check-label" for="editTaskRequirePhoto3">Require photo</label>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <label class="form-label mb-0">Subcomponents</label>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="btnAddEditSubtaskRow3">
+                Add subcomponent
+              </button>
+            </div>
+            <div id="editTaskSubtasksWrap3" class="d-grid gap-2"></div>
+          </div>
         </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button class="btn btn-primary" id="btnUpdateTask3">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button class="btn btn-primary" id="btnCreateTask3">Create task</button>
         </div>
         <div class="d-flex gap-2">
