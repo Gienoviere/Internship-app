@@ -38,6 +38,7 @@ async function init() {
   els.userRoleBadge.textContent = state.me.role || "Logged in";
   els.globalDate.value = state.selectedDate;
   state.feedItems = await api("/inventory/feed-items");
+  addSubtaskRow("createTaskSubtasksWrap3", state.feedItems || []);
   await refresh();
 }
 
@@ -181,10 +182,19 @@ function renderCategorySection(category, tasks) {
 
 function renderTaskCard(task) {
   const subtasks = Array.isArray(task.subtasks) ? task.subtasks : [];
+  const completedIds = Array.isArray(task.completedSubtasks) ? task.completedSubtasks.map(String) : [];
+
   const subtaskBadges = subtasks.length
-    ? subtasks.map((sub) => {
-        const done = Array.isArray(task.completedSubtasks) && task.completedSubtasks.includes(sub);
-        return `<span class="badge rounded-pill text-bg-light border me-1 mb-1 subtask-chip ${done ? 'done' : ''}">${escapeHtml(sub)}</span>`;
+    ? subtasks.map((sub, index) => {
+        const subObj = typeof sub === "string" ? { id: `sub_${index}`, title: sub } : sub;
+        const done = completedIds.includes(String(subObj.id));
+        const amountText =
+          subObj.amount !== null && subObj.amount !== undefined && subObj.amount !== ""
+            ? ` · ${subObj.amount}${subObj.unit || ""}`
+            : "";
+        return `<span class="badge rounded-pill text-bg-light border me-1 mb-1 subtask-chip ${done ? 'done' : ''}">
+          ${escapeHtml(subObj.title || "")}${escapeHtml(amountText)}
+        </span>`;
       }).join('')
     : '<span class="text-muted small">No subcomponents yet</span>';
 
@@ -217,8 +227,23 @@ function renderTaskCard(task) {
           <div class="small mb-2"><strong>Quantity:</strong> ${task.quantityGrams ?? '-'} grams</div>
           ${photoHtml}
 
-          <div class="mt-auto pt-3 d-flex gap-2">
-            <button class="btn btn-primary btn-sm" data-action="open-log" data-task-id="${task.taskId}">${task.logged ? 'Edit log' : 'Log task'}</button>
+          <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
+            <button class="btn btn-primary btn-sm" data-action="open-log" data-task-id="${task.taskId}">
+              ${task.logged ? 'Edit log' : 'Log task'}
+            </button>
+
+            ${
+              state.me && (state.me.role === "ADMIN" || state.me.role === "SUPERVISOR")
+                ? `
+                  <button class="btn btn-outline-secondary btn-sm" data-action="edit-task" data-task-id="${task.taskId}">
+                    Edit task
+                  </button>
+                  <button class="btn btn-outline-danger btn-sm" data-action="delete-task" data-task-id="${task.taskId}">
+                    Delete
+                  </button>
+                `
+                : ""
+            }
           </div>
         </div>
       </div>
@@ -332,29 +357,44 @@ async function onQuickLogSubmit() {
     let taskId = Number(els.quickLogTask.value || 0);
 
     if (els.quickLogCustomToggle.checked) {
-      const newTask = await api.createTask({
-        name: document.getElementById('quickCustomTaskName3').value.trim(),
-        description: document.getElementById('quickCustomTaskDescription3').value.trim(),
-        category: document.getElementById('quickCustomAnimalCategory3').value.trim(),
-        animalCategory: document.getElementById('quickCustomAnimalCategory3').value.trim(),
-        isDaily: true,
-        active: true,
-        sortOrder: 0,
-        subtasks: textareaLines(document.getElementById('quickCustomSubtasks3').value),
+      const newTask = await api("/tasks", {
+        method: "POST",
+        json: {
+          name: document.getElementById('quickCustomTaskName3').value.trim(),
+          description: document.getElementById('quickCustomTaskDescription3').value.trim(),
+          category: document.getElementById('quickCustomAnimalCategory3').value.trim(),
+          animalCategory: document.getElementById('quickCustomAnimalCategory3').value.trim(),
+          isDaily: true,
+          active: true,
+          sortOrder: 0,
+          subtasks: textareaLines(document.getElementById('quickCustomSubtasks3').value).map((title, index) => ({
+            id: `sub_${Date.now()}_${index}`,
+            title,
+            amount: null,
+            unit: "g",
+            feedItemId: null,
+            affectsInventory: false,
+            required: true,
+            sortOrder: index,
+          })),
+        },
       });
       taskId = newTask.id;
     }
 
     if (!taskId) throw new Error('Select or create a task first.');
 
-    await api.createLog({
-      date: state.selectedDate,
-      taskId,
-      completed: document.getElementById('quickLogCompleted3').checked,
-      quantityGrams: toNullableNumber(document.getElementById('quickLogQty3').value),
-      notes: document.getElementById('quickLogNotes3').value.trim(),
-      completedSubtasks: [],
-      photoUrl: await fileToDataUrl(els.quickLogPhoto),
+    await api("/daily-logs", {
+      method: "POST",
+      json: {
+        date: state.selectedDate,
+        taskId,
+        completed: document.getElementById('quickLogCompleted3').checked,
+        quantityGrams: toNullableNumber(document.getElementById('quickLogQty3').value),
+        notes: document.getElementById('quickLogNotes3').value.trim(),
+        completedSubtasks: [],
+        photoUrl: await fileToDataUrl(els.quickLogPhoto),
+      },
     });
 
     bootstrap.Modal.getOrCreateInstance(document.getElementById('quickLogModal')).hide();
@@ -370,12 +410,26 @@ function buildSubtaskCheckboxes(subtasks = [], completed = []) {
     return '<div class="text-muted small">No subcomponents added for this task.</div>';
   }
 
-  return subtasks.map((subtask, index) => `
-    <label class="form-check border rounded p-2">
-      <input class="form-check-input me-2" type="checkbox" value="${escapeAttr(subtask)}" ${completed?.includes(subtask) ? 'checked' : ''}>
-      <span class="form-check-label">${escapeHtml(subtask)}</span>
-    </label>
-  `).join('');
+  const completedIds = Array.isArray(completed) ? completed.map(String) : [];
+
+  return subtasks.map((subtask, index) => {
+    const sub = typeof subtask === "string"
+      ? { id: `sub_${index}`, title: subtask, amount: null, unit: "" }
+      : subtask;
+
+    const checked = completedIds.includes(String(sub.id));
+    const amountText =
+      sub.amount !== null && sub.amount !== undefined && sub.amount !== ""
+        ? ` (${sub.amount}${sub.unit || ""})`
+        : "";
+
+    return `
+      <label class="form-check border rounded p-2">
+        <input class="form-check-input me-2" type="checkbox" value="${escapeAttr(String(sub.id))}" ${checked ? 'checked' : ''}>
+        <span class="form-check-label">${escapeHtml(sub.title || "")}${escapeHtml(amountText)}</span>
+      </label>
+    `;
+  }).join('');
 }
 
 function checkedValues(selector) {
