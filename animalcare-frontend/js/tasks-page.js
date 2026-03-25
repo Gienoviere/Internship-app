@@ -2,11 +2,17 @@ import { api } from "./api.js";
 
 const state = {
   me: null,
+  role: "",
+  canManage: false,
   selectedDate: todayDateString(),
   tasks: [],
   categoryFilter: '',
   feedItems: [],
 };
+
+function isManager() {
+  return state.canManage;
+}
 
 const els = {
   userRoleBadge: document.getElementById('userRoleBadge3'),
@@ -29,11 +35,6 @@ const els = {
   logPhotoPreview: document.getElementById('logPhotoPreview3'),
   btnSaveLog: document.getElementById('btnSaveLog3'),
 };
-
-function isManager() {
-  const role = String(state.me?.role || "").toUpperCase();
-  return role === "ADMIN" || role === "SUPERVISOR";
-}
 
 function normalizeFrontendSubtask(subtask, index = 0) {
   if (!subtask) {
@@ -97,6 +98,11 @@ async function init() {
 
   const meRes = await api("/auth/me");
   state.me = meRes?.user || meRes || null;
+  state.role = String(state.me?.role || "").toUpperCase();
+  state.canManage = state.role === "ADMIN" || state.role === "SUPERVISOR";
+
+  console.log("AUTH ME =", state.me);
+  console.log("ROLE =", state.role, "CAN MANAGE =", state.canManage);
 
   els.userRoleBadge.textContent = state.me?.role || "Logged in";
   els.globalDate.value = state.selectedDate;
@@ -159,7 +165,17 @@ function wireEvents() {
 
 async function refresh() {
   const payload = await api(`/tasks/today?date=${encodeURIComponent(state.selectedDate)}`);
-  state.tasks = payload.tasks || [];
+
+  state.tasks = (payload.tasks || []).map((task) => ({
+    ...task,
+    taskName: task.taskName || task.name || "",
+    animalCategory: task.animalCategory || task.category || "Uncategorized",
+    subtasks: normalizeFrontendSubtasks(task.subtasks),
+    completedSubtasks: Array.isArray(task.completedSubtasks) ? task.completedSubtasks : [],
+  }));
+
+  console.log("TASKS TODAY =", state.tasks);
+
   fillCategoryFilters();
   renderSummary();
   renderTasks();

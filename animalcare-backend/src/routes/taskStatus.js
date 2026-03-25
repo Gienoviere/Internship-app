@@ -43,24 +43,20 @@ function normalizeSubtasks(value) {
       title = String(title || "").trim();
       if (!title) return null;
 
-      const amount =
-        item.amount === null || item.amount === undefined || item.amount === ""
-          ? null
-          : Number(item.amount);
-
       return {
         id: String(item.id || `sub_${index + 1}`),
         title,
-        amount: Number.isFinite(amount) && amount >= 0 ? amount : null,
+        amount:
+          item.amount === null || item.amount === undefined || item.amount === ""
+            ? null
+            : Number(item.amount),
         unit: String(item.unit || "g").trim() || "g",
         feedItemId:
-          item.feedItemId === null ||
-          item.feedItemId === undefined ||
-          item.feedItemId === ""
+          item.feedItemId === null || item.feedItemId === undefined || item.feedItemId === ""
             ? null
             : Number(item.feedItemId),
         affectsInventory: Boolean(item.affectsInventory),
-        required: item.required === undefined ? true : Boolean(item.required),
+        required: item.required !== false,
         sortOrder: Number.isFinite(Number(item.sortOrder)) ? Number(item.sortOrder) : index,
       };
     })
