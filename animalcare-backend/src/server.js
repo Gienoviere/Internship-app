@@ -23,13 +23,26 @@ const manualRoutes = require("./routes/manual");
 
 
 const app = express();
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://192.168.20.40:3000",
+  "http://192.168.20.40:8080",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(cors({
-   origin: [
-    "http://192.168.20.40:3001",
-    "http://127.0.0.1:3000",
-    "http://192.168.20.40:3000",
-    "http://192.168.20.40:8080"
-  ],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow mobile apps, curl, etc.
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.error("CORS blocked:", origin);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
 }));
 app.use(express.json());
 
