@@ -283,15 +283,13 @@ async function sendSummaryEmail() {
 }
 
 async function loadCriticalObservationKpi() {
+  const countEl = document.getElementById("criticalObsCount3");
+  const listEl = document.getElementById("criticalObsList3");
+
   try {
     const payload = await api("/observations/critical-count");
 
-    const countEl = document.getElementById("criticalObsCount3");
-    const listEl = document.getElementById("criticalObsList3");
-
-    if (countEl) {
-      countEl.textContent = payload.count ?? 0;
-    }
+    if (countEl) countEl.textContent = payload.count ?? 0;
 
     if (listEl) {
       listEl.innerHTML = (payload.latest || []).length
@@ -299,16 +297,18 @@ async function loadCriticalObservationKpi() {
             <li class="list-group-item d-flex justify-content-between align-items-start">
               <div>
                 <div class="fw-semibold">${obs.title}</div>
-                <div class="small text-muted">
-                  ${obs.animalTag || "—"}${obs.task ? ` · ${obs.task.name}` : ""}
-                </div>
+                <div class="small text-muted">${obs.animalTag || "—"}</div>
               </div>
               <span class="badge bg-danger">${obs.severity}</span>
             </li>
           `).join("")
-        : `<li class="list-group-item text-muted">No open critical observations.</li>`;
+        : `<li class="list-group-item text-muted">No critical observations.</li>`;
     }
   } catch (err) {
     console.error("Failed to load critical observation KPI:", err);
+    if (countEl) countEl.textContent = "0";
+    if (listEl) {
+      listEl.innerHTML = `<li class="list-group-item text-muted">Critical observation KPI unavailable.</li>`;
+    }
   }
 }
