@@ -24,8 +24,12 @@ const manualRoutes = require("./routes/manual");
 
 const app = express();
 app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true
+   origin: [
+    "http://192.168.20.40:3001",
+    "http://127.0.0.1:3000",
+    "http://192.168.20.40:3000",
+    "http://192.168.20.40:8080"
+  ],
 }));
 app.use(express.json());
 
