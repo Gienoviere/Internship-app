@@ -304,7 +304,6 @@ function renderTaskCard(task) {
           </div>
 
           <div class="small mb-2"><strong>Notes:</strong> ${escapeHtml(task.notes || 'None')}</div>
-          <div class="small mb-2"><strong>Quantity:</strong> ${task.quantityGrams ?? '-'} grams</div>
           ${photoHtml}
 
           <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
@@ -624,6 +623,8 @@ function addSubtaskRow(wrapId, feedItems = [], value = {}) {
   node.querySelector(".subtask-unit").value = sub.unit || "g";
   node.querySelector(".subtask-required").checked = sub.required !== false;
   node.querySelector(".subtask-affectsInventory").checked = Boolean(sub.affectsInventory);
+  node.querySelector(".subtask-description").value = value.description || "";
+  node.querySelector(".subtask-photoRequired").checked = Boolean(value.photoRequired);
 
   const feedSelect = node.querySelector(".subtask-feedItemId");
   feedItems.forEach((item) => {
@@ -654,6 +655,8 @@ function collectSubtasks(wrapId) {
       affectsInventory: row.querySelector(".subtask-affectsInventory").checked,
       required: row.querySelector(".subtask-required").checked,
       sortOrder: index,
+      description: row.querySelector(".subtask-description").value.trim(),
+      photoRequired: row.querySelector(".subtask-photoRequired").checked,
     }))
     .filter((s) => s.title);
 }

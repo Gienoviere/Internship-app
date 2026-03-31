@@ -15,7 +15,7 @@ function isValidISODateOnly(s) {
   return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s);
 }
 
-function normalizeTaskSubtasks(value) {
+function normalizeSubtasks(value) {
   if (!Array.isArray(value)) return [];
   return value
     .map((item, index) => {
@@ -62,7 +62,7 @@ function normalizeTaskSubtasks(value) {
 }
 
 function normalizeCompletedSubtasks(taskSubtasks, completedSubtasks) {
-  const allowedIds = new Set(normalizeTaskSubtasks(taskSubtasks).map((s) => String(s.id)));
+  const allowedIds = new Set(normalizeSubtasks(taskSubtasks).map((s) => String(s.id)));
   if (!Array.isArray(completedSubtasks)) return [];
   return completedSubtasks
     .map((entry) => String(entry || "").trim())
@@ -83,7 +83,7 @@ function unitToGrams(amount, unit) {
 
 function buildMovementPlan(task, completedSubtasks, fallbackQuantityGrams) {
   const plan = [];
-  const subtasks = normalizeTaskSubtasks(task.subtasks);
+  const subtasks = normalizeSubtasks(task.subtasks);
   const completedIds = new Set(normalizeCompletedSubtasks(subtasks, completedSubtasks));
 
   for (const sub of subtasks) {
@@ -194,7 +194,7 @@ async function syncInventoryMovements(tx, { logId, date, userId, movementPlan })
 }
 
 async function createAutoObservationForFailedTask(tx, { log, task, userId }) {
-  const taskSubtasks = normalizeTaskSubtasks(task.subtasks);
+  const taskSubtasks = normalizeSubtasks(task.subtasks);
   const completedIds = Array.isArray(log.completedSubtasks) ? log.completedSubtasks.map(String) : [];
   const requiredSubtasks = taskSubtasks.filter((s) => s.required !== false);
   const completedRequiredCount = requiredSubtasks.filter((s) => completedIds.includes(String(s.id))).length;
@@ -293,8 +293,14 @@ router.post("/", requireAuth, async (req, res) => {
 
     const normalizedCompletedSubtasks = normalizeCompletedSubtasks(task.subtasks, completedSubtasks);
 
-    if (task.photoRequired && !photoUrl) {
-      return res.status(400).json({ error: "A photo is required for this task" });
+    const taskSubtasks = normalizeTaskSubtasks(task.subtasks);
+    const completedIds = new Set(normalizedCompletedSubtasks.map(String));
+    const requiresPhoto = taskSubtasks.some(
+      (sub) => sub.photoRequired && completedIds.has(String(sub.id))
+    );
+
+    if (requiresPhoto && !photoUrl) {
+      return res.status(400).json({ error: "A photo is required for one or more completed subcomponents" });
     }
 
     const q = quantityGrams === undefined || quantityGrams === null ? null : Number(quantityGrams);
@@ -430,8 +436,21 @@ router.patch("/:id", requireAuth, async (req, res) => {
     }
 
     const nextPhotoUrl = photoUrl === undefined ? existing.photoUrl : (photoUrl || null);
-    if (existing.task.photoRequired && !nextPhotoUrl) {
-      return res.status(400).json({ error: "A photo is required for this task" });
+
+    const existingTaskSubtasks = normalizeTaskSubtasks(existing.task.subtasks);
+    const nextCompletedIds = new Set(
+      (completedSubtasks === undefined
+        ? Array.isArray(existing.completedSubtasks) ? existing.completedSubtasks : []
+        : normalizeCompletedSubtasks(existing.task.subtasks, completedSubtasks)
+      ).map(String)
+    );
+
+    const requiresPhoto = existingTaskSubtasks.some(
+      (sub) => sub.photoRequired && nextCompletedIds.has(String(sub.id))
+    );
+
+    if (requiresPhoto && !nextPhotoUrl) {
+      return res.status(400).json({ error: "A photo is required for one or more completed subcomponents" });
     }
 
     const newQty = q === undefined ? undefined : Math.round(q);

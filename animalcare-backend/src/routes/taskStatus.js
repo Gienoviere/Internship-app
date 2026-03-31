@@ -24,11 +24,13 @@ function normalizeSubtasks(value) {
         return {
           id: `sub_${index + 1}`,
           title,
+          description: "",
           amount: null,
           unit: "g",
           feedItemId: null,
           affectsInventory: false,
           required: true,
+          photoRequired: false,
           sortOrder: index,
         };
       }
@@ -43,20 +45,26 @@ function normalizeSubtasks(value) {
       title = String(title || "").trim();
       if (!title) return null;
 
+      const amount =
+        item.amount === null || item.amount === undefined || item.amount === ""
+          ? null
+          : Number(item.amount);
+
       return {
         id: String(item.id || `sub_${index + 1}`),
         title,
-        amount:
-          item.amount === null || item.amount === undefined || item.amount === ""
-            ? null
-            : Number(item.amount),
+        description: String(item.description || "").trim(),
+        amount: Number.isFinite(amount) && amount >= 0 ? amount : null,
         unit: String(item.unit || "g").trim() || "g",
         feedItemId:
-          item.feedItemId === null || item.feedItemId === undefined || item.feedItemId === ""
+          item.feedItemId === null ||
+          item.feedItemId === undefined ||
+          item.feedItemId === ""
             ? null
             : Number(item.feedItemId),
         affectsInventory: Boolean(item.affectsInventory),
-        required: item.required !== false,
+        required: item.required === undefined ? true : Boolean(item.required),
+        photoRequired: Boolean(item.photoRequired),
         sortOrder: Number.isFinite(Number(item.sortOrder)) ? Number(item.sortOrder) : index,
       };
     })
@@ -123,7 +131,7 @@ router.get("/today", requireAuth, async (req, res) => {
           feedItemName: task.feedItem?.name || null,
           logged: Boolean(log),
           completed: log ? log.completed : false,
-          quantityGrams: log ? log.quantityGrams : null,
+          
           notes: log ? log.notes : null,
           photoUrl: log?.photoUrl || null,
           completedSubtasks: Array.isArray(log?.completedSubtasks) ? log.completedSubtasks : [],

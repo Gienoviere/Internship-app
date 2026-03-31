@@ -16,18 +16,25 @@ function normalizeSubtasks(value) {
         return {
           id: `sub_${index + 1}`,
           title,
+          description: "",
           amount: null,
           unit: "g",
           feedItemId: null,
           affectsInventory: false,
           required: true,
+          photoRequired: false,
           sortOrder: index,
         };
       }
 
       if (!item || typeof item !== "object") return null;
 
-      const title = String(item.title || "").trim();
+      let title = item.title;
+      if (title && typeof title === "object") {
+        title = title.title || title.name || String(title);
+      }
+
+      title = String(title || "").trim();
       if (!title) return null;
 
       const amount =
@@ -38,6 +45,7 @@ function normalizeSubtasks(value) {
       return {
         id: String(item.id || `sub_${index + 1}`),
         title,
+        description: String(item.description || "").trim(),
         amount: Number.isFinite(amount) && amount >= 0 ? amount : null,
         unit: String(item.unit || "g").trim() || "g",
         feedItemId:
@@ -48,6 +56,7 @@ function normalizeSubtasks(value) {
             : Number(item.feedItemId),
         affectsInventory: Boolean(item.affectsInventory),
         required: item.required === undefined ? true : Boolean(item.required),
+        photoRequired: Boolean(item.photoRequired),
         sortOrder: Number.isFinite(Number(item.sortOrder)) ? Number(item.sortOrder) : index,
       };
     })
@@ -92,7 +101,6 @@ router.post("/", requireAuth, async (req, res) => {
       active,
       affectsInventory,
       feedItemId,
-      photoRequired,
       subtasks,
     } = req.body || {};
 
@@ -121,7 +129,6 @@ router.post("/", requireAuth, async (req, res) => {
             feedItemId === null || feedItemId === undefined || feedItemId === ""
               ? null
               : Number(feedItemId),
-          photoRequired: Boolean(photoRequired),
           subtasks: normalizedSubtasks,
         },
         include: {
@@ -176,7 +183,6 @@ router.patch("/:id", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (r
       active,
       affectsInventory,
       feedItemId,
-      photoRequired,
       subtasks,
     } = req.body || {};
 
@@ -209,7 +215,6 @@ router.patch("/:id", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (r
                   : Number(feedItemId),
             }
           : {}),
-        ...(photoRequired !== undefined ? { photoRequired: Boolean(photoRequired) } : {}),
         ...(normalizedSubtasks !== undefined ? { subtasks: normalizedSubtasks } : {}),
       },
       include: {

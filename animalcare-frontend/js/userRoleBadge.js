@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "./api.js";
+
 async function syncNavbarUserShared() {
   const badge =
     document.getElementById("userRoleBadge3") ||
@@ -17,7 +19,7 @@ async function syncNavbarUserShared() {
   }
 
   try {
-    const res = await fetch("http://192.168.20.40:3001/auth/me", {
+    const res = await fetch(`${API_BASE_URL}/auth/me`, {
       headers: {
         Authorization: `Bearer ${token}`
       }
@@ -26,7 +28,7 @@ async function syncNavbarUserShared() {
     if (!res.ok) throw new Error("Failed to load current user");
 
     const me = await res.json();
-    const currentUser = me.user || me;
+    const currentUser = me?.user || me;
 
     if (badge) {
       badge.textContent =
