@@ -32,7 +32,7 @@ model User {
   logs         DailyLog[]
   reviewedLogs DailyLog[] @relation("ReviewedLogs")
 
-  observations Observation[] @relation("UserObservations")
+  observations Observation[]
 
   taskAssignments TaskAssignment[]
 
