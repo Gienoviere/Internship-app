@@ -355,7 +355,6 @@ function openLogModal(taskId) {
   const logTaskName = document.getElementById("logTaskName3");
   const logAnimalCategory = document.getElementById("logAnimalCategory3");
   const logTaskDescription = document.getElementById("logTaskDescription3");
-  const logQty = document.getElementById("logQty3");
   const logNotes = document.getElementById("logNotes3");
   const logCompleted = document.getElementById("logCompleted3");
   const logSubtasks = document.getElementById("logSubtasks3");
@@ -375,7 +374,6 @@ function openLogModal(taskId) {
   logTaskName.value = task.taskName || "";
   logAnimalCategory.value = task.animalCategory || task.category || "";
   logTaskDescription.value = task.description || "";
-  logQty.value = task.quantityGrams ?? "";
   logNotes.value = task.notes || "";
   logCompleted.checked = Boolean(task.completed);
   logSubtasks.innerHTML = buildSubtaskCheckboxes(task.subtasks, task.completedSubtasks);
@@ -398,7 +396,6 @@ async function onSaveLog() {
       date: state.selectedDate,
       taskId,
       completed: document.getElementById('logCompleted3').checked,
-      quantityGrams: toNullableNumber(document.getElementById('logQty3').value),
       notes: document.getElementById('logNotes3').value.trim(),
       completedSubtasks: checkedValues('#logSubtasks3 input[type="checkbox"]'),
       photoUrl: photoBase64,
@@ -434,7 +431,6 @@ async function onCreateTask() {
       isDaily: document.getElementById("createTaskDaily3").checked,
       sortOrder: Number(document.getElementById("createTaskSortOrder3").value || 0),
       active: document.getElementById("createTaskActive3").checked,
-      photoRequired: document.getElementById("createTaskRequirePhoto3").checked,
       subtasks: collectSubtasks("createTaskSubtasksWrap3"),
     };
 
@@ -712,7 +708,6 @@ function openEditTaskModal(taskId) {
   document.getElementById("editTaskDaily3").checked = Boolean(task.isDaily);
   document.getElementById("editTaskSortOrder3").value = task.sortOrder ?? 0;
   document.getElementById("editTaskActive3").checked = task.active !== false;
-  document.getElementById("editTaskRequirePhoto3").checked = Boolean(task.photoRequired);
 
   const wrap = document.getElementById("editTaskSubtasksWrap3");
   if (wrap) {
@@ -737,7 +732,6 @@ async function onUpdateTask() {
       isDaily: document.getElementById("editTaskDaily3").checked,
       sortOrder: Number(document.getElementById("editTaskSortOrder3").value || 0),
       active: document.getElementById("editTaskActive3").checked,
-      photoRequired: document.getElementById("editTaskRequirePhoto3").checked,
       subtasks: collectSubtasks("editTaskSubtasksWrap3"),
     };
 

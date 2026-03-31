@@ -23,13 +23,15 @@ function normalizeSubtasks(value) {
         const title = item.trim();
         if (!title) return null;
         return {
-          id: `sub_${index + 1}`,
+          id: String(item.id || `sub_${index + 1}`),
           title,
+          description: String(item.description || "").trim(),
           amount: null,
           unit: "g",
           feedItemId: null,
-          affectsInventory: false,
-          required: true,
+          affectsInventory: Boolean(item.affectsInventory),
+          required: item.required === undefined ? true : Boolean(item.required),
+          photoRequired: Boolean(item.photoRequired),
           sortOrder: index,
         };
       }
@@ -293,7 +295,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     const normalizedCompletedSubtasks = normalizeCompletedSubtasks(task.subtasks, completedSubtasks);
 
-    const taskSubtasks = normalizeTaskSubtasks(task.subtasks);
+    const taskSubtasks = normalizeSubtasks(task.subtasks);
     const completedIds = new Set(normalizedCompletedSubtasks.map(String));
     const requiresPhoto = taskSubtasks.some(
       (sub) => sub.photoRequired && completedIds.has(String(sub.id))
@@ -437,7 +439,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
     const nextPhotoUrl = photoUrl === undefined ? existing.photoUrl : (photoUrl || null);
 
-    const existingTaskSubtasks = normalizeTaskSubtasks(existing.task.subtasks);
+    const existingTaskSubtasks = normalizeSubtasks(existing.task.subtasks);
     const nextCompletedIds = new Set(
       (completedSubtasks === undefined
         ? Array.isArray(existing.completedSubtasks) ? existing.completedSubtasks : []
