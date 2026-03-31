@@ -428,6 +428,62 @@
     </div>
   </div>
 
+  <div class="modal fade" id="taskObservationModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add observation for task</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="taskObsTaskId3">
+
+          <div class="mb-3">
+            <label class="form-label">Task</label>
+            <input type="text" class="form-control" id="taskObsTaskName3" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Animal / location</label>
+            <input type="text" class="form-control" id="taskObsAnimal3" placeholder="Example: Pig pen 2">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Severity</label>
+            <select class="form-select" id="taskObsSeverity3">
+              <option value="INFO">INFO</option>
+              <option value="WARN" selected>WARN</option>
+              <option value="CRITICAL">CRITICAL</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-control" id="taskObsTitle3" placeholder="Example: Pig appears sick">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" id="taskObsDesc3" rows="4" placeholder="Describe what happened"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Photo</label>
+            <input type="file" class="form-control" id="taskObsPhoto3" accept="image/*">
+          </div>
+
+          <div class="mt-2">
+            <img id="taskObsPhotoPreview3" class="photo-preview" alt="Observation preview">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" id="btnCreateTaskObservation3">Save observation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       const currentPage = window.location.pathname.split('/').pop() || 'index.html';

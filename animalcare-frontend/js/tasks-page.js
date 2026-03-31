@@ -158,14 +158,38 @@ function wireEvents() {
       await onDeleteTask(taskId);
       return;
     }
+
+    const observationBtn = event.target.closest('[data-action="open-observation"]');
+    if (observationBtn) {
+      const taskId = Number(observationBtn.dataset.taskId);
+      openTaskObservationModal(taskId);
+      return;
+    }
   });
 
   document.getElementById("btnUpdateTask3")?.addEventListener("click", onUpdateTask);
   document.getElementById("btnAddEditSubtaskRow3")?.addEventListener("click", () => {
     addSubtaskRow("editTaskSubtasksWrap3", state.feedItems || []);
   });
+
   document.getElementById("btnAddCreateSubtaskRow3")?.addEventListener("click", () => {
     addSubtaskRow("createTaskSubtasksWrap3", state.feedItems || []);
+  });
+
+  document.getElementById("taskObsPhoto3")?.addEventListener("change", () => {
+  previewFile(
+    document.getElementById("taskObsPhoto3"),
+    document.getElementById("taskObsPhotoPreview3"));
+  });
+
+  // click the observaion button on task
+  document.getElementById("btnCreateTaskObservation3")?.addEventListener("click", onCreateTaskObservation);
+
+  // open observation from task
+  document.getElementById("btnOpenObservationFromLog3")?.addEventListener("click", () => {
+  const taskId = Number(document.getElementById("logTaskId3").value);
+  if (!taskId) return;
+  openTaskObservationModal(taskId);
   });
 }
 
@@ -329,6 +353,10 @@ function renderTaskCard(task) {
           <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
             <button class="btn btn-primary btn-sm" data-action="open-log" data-task-id="${task.taskId}">
               ${task.logged ? 'Edit log' : 'Log task'}
+            </button>
+
+            <button class="btn btn-outline-warning btn-sm" data-action="open-observation" data-task-id="${task.taskId}">
+              Add observation
             </button>
 
             ${isManager() ? `
@@ -761,5 +789,66 @@ async function onDeleteTask(taskId) {
     await refresh();
   } catch (err) {
     showAlert(err.message || "Could not delete task", "danger");
+  }
+}
+
+// observation addition in task
+function openTaskObservationModal(taskId) {
+  const task = state.tasks.find((item) => item.taskId === taskId);
+  if (!task) return;
+
+  document.getElementById("taskObsTaskId3").value = task.taskId;
+  document.getElementById("taskObsTaskName3").value = task.taskName || "";
+  document.getElementById("taskObsAnimal3").value = task.animalCategory || task.category || "";
+  document.getElementById("taskObsSeverity3").value = "WARN";
+  document.getElementById("taskObsTitle3").value = "";
+  document.getElementById("taskObsDesc3").value = "";
+
+  const photoInput = document.getElementById("taskObsPhoto3");
+  const photoPreview = document.getElementById("taskObsPhotoPreview3");
+  if (photoInput) photoInput.value = "";
+  if (photoPreview) {
+    photoPreview.src = "";
+    photoPreview.style.display = "none";
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("taskObservationModal")).show();
+}
+
+// create observation from task
+async function onCreateTaskObservation() {
+  try {
+    const taskId = Number(document.getElementById("taskObsTaskId3").value);
+    const title = document.getElementById("taskObsTitle3").value.trim();
+    const description = document.getElementById("taskObsDesc3").value.trim();
+    const severity = document.getElementById("taskObsSeverity3").value || "WARN";
+    const animalTag = document.getElementById("taskObsAnimal3").value.trim();
+    const photoUrl = await fileToDataUrl(document.getElementById("taskObsPhoto3"));
+
+    if (!taskId) throw new Error("Task is missing.");
+    if (!title) throw new Error("Observation title is required.");
+
+    const created = await api("/observations", {
+      method: "POST",
+      json: {
+        date: state.selectedDate,
+        title,
+        description,
+        severity,
+        animalTag,
+        status: "OPEN",
+        taskId,
+      },
+    });
+
+    if (photoUrl) {
+      // optional simple approach if your observations route later supports base64
+      // for now better keep photo upload on Observations page route style
+    }
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("taskObservationModal")).hide();
+    showAlert("Observation created and linked to task.", "success");
+  } catch (err) {
+    showAlert(err.message || "Could not create observation", "danger");
   }
 }
