@@ -41,11 +41,13 @@ function normalizeFrontendSubtask(subtask, index = 0) {
     return {
       id: `sub_${index}`,
       title: "",
+      description: "",
       amount: null,
       unit: "g",
       feedItemId: null,
       affectsInventory: false,
       required: true,
+      photoRequired: false,
       sortOrder: index,
     };
   }
@@ -54,11 +56,13 @@ function normalizeFrontendSubtask(subtask, index = 0) {
     return {
       id: `sub_${index}`,
       title: subtask,
+      description: "",
       amount: null,
       unit: "g",
       feedItemId: null,
       affectsInventory: false,
       required: true,
+      photoRequired: false,
       sortOrder: index,
     };
   }
@@ -70,18 +74,20 @@ function normalizeFrontendSubtask(subtask, index = 0) {
 
   return {
     id: String(subtask.id || `sub_${index}`),
-    title: String(title || ""),
+    title: String(title || "").trim(),
+    description: String(subtask.description || "").trim(),
     amount:
       subtask.amount === null || subtask.amount === undefined || subtask.amount === ""
         ? null
         : Number(subtask.amount),
-    unit: String(subtask.unit || "g"),
+    unit: String(subtask.unit || "g").trim() || "g",
     feedItemId:
       subtask.feedItemId === null || subtask.feedItemId === undefined || subtask.feedItemId === ""
         ? null
         : Number(subtask.feedItemId),
     affectsInventory: Boolean(subtask.affectsInventory),
     required: subtask.required !== false,
+    photoRequired: Boolean(subtask.photoRequired),
     sortOrder: Number.isFinite(Number(subtask.sortOrder)) ? Number(subtask.sortOrder) : index,
   };
 }
@@ -266,17 +272,31 @@ function renderTaskCard(task) {
   const completedIds = Array.isArray(task.completedSubtasks) ? task.completedSubtasks.map(String) : [];
 
   const subtaskBadges = subtasks.length
-    ? subtasks.map((subObj) => {
-        const done = completedIds.includes(String(subObj.id));
-        const amountText =
-          subObj.amount !== null && subObj.amount !== undefined && subObj.amount !== ""
-            ? ` · ${subObj.amount}${subObj.unit || ""}`
-            : "";
-        return `<span class="badge rounded-pill text-bg-light border me-1 mb-1 subtask-chip ${done ? 'done' : ''}">
-          ${escapeHtml(subObj.title || "")}${escapeHtml(amountText)}
-        </span>`;
-      }).join('')
-    : '<span class="text-muted small">No subcomponents yet</span>';
+  ? subtasks.map((subObj) => {
+      const done = completedIds.includes(String(subObj.id));
+      return `
+        <div class="border rounded p-2 mb-2 ${done ? 'bg-light' : ''}">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <div class="fw-semibold ${done ? 'text-decoration-line-through text-muted' : ''}">
+                ${escapeHtml(subObj.title || "")}
+              </div>
+              ${
+                subObj.description
+                  ? `<div class="small text-muted mt-1">${escapeHtml(subObj.description)}</div>`
+                  : ""
+              }
+            </div>
+            <div class="d-flex flex-wrap gap-1">
+              ${subObj.required ? `<span class="badge text-bg-light border">Required</span>` : ""}
+              ${subObj.photoRequired ? `<span class="badge text-bg-warning text-dark">Photo required</span>` : ""}
+              ${done ? `<span class="badge text-bg-success">Done</span>` : ""}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("")
+  : '<span class="text-muted small">No subcomponents yet</span>';
 
   const photoHtml = task.photoUrl
     ? `<img src="${escapeAttr(task.photoUrl)}" class="img-fluid rounded border mt-2" alt="Task photo">`
@@ -435,48 +455,61 @@ async function onQuickLogSubmit() {
       const newTask = await api("/tasks", {
         method: "POST",
         json: {
-          name: document.getElementById('quickCustomTaskName3').value.trim(),
-          description: document.getElementById('quickCustomTaskDescription3').value.trim(),
-          category: document.getElementById('quickCustomAnimalCategory3').value.trim(),
-          animalCategory: document.getElementById('quickCustomAnimalCategory3').value.trim(),
+          name: document.getElementById("quickCustomTaskName3").value.trim(),
+          description: document.getElementById("quickCustomTaskDescription3").value.trim(),
+          category: document.getElementById("quickCustomAnimalCategory3").value.trim(),
+          animalCategory: document.getElementById("quickCustomAnimalCategory3").value.trim(),
           isDaily: true,
           active: true,
           sortOrder: 0,
-          subtasks: textareaLines(document.getElementById('quickCustomSubtasks3').value).map((title, index) => ({
+          subtasks: textareaLines(document.getElementById("quickCustomSubtasks3").value).map((title, index) => ({
             id: `sub_${Date.now()}_${index}`,
             title,
+            description: "",
             amount: null,
             unit: "g",
             feedItemId: null,
             affectsInventory: false,
             required: true,
+            photoRequired: false,
             sortOrder: index,
           })),
         },
       });
+
       taskId = newTask.id;
+      await refresh();
     }
 
-    if (!taskId) throw new Error('Select or create a task first.');
+    if (!taskId) throw new Error("Select or create a task first.");
+
+    const task = state.tasks.find((t) => Number(t.taskId) === Number(taskId));
+    if (!task) throw new Error("Selected task could not be loaded.");
+
+    const subtasks = normalizeFrontendSubtasks(task.subtasks);
+    const completed = document.getElementById("quickLogCompleted3").checked;
+
+    const completedSubtasks = completed
+      ? subtasks.filter((sub) => sub.required !== false).map((sub) => String(sub.id))
+      : [];
 
     await api("/daily-logs", {
       method: "POST",
       json: {
         date: state.selectedDate,
         taskId,
-        completed: document.getElementById('quickLogCompleted3').checked,
-        quantityGrams: toNullableNumber(document.getElementById('quickLogQty3').value),
-        notes: document.getElementById('quickLogNotes3').value.trim(),
-        completedSubtasks: [],
+        completed,
+        notes: document.getElementById("quickLogNotes3").value.trim(),
+        completedSubtasks,
         photoUrl: await fileToDataUrl(els.quickLogPhoto),
       },
     });
 
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('quickLogModal')).hide();
-    showAlert('Quick log added.', 'success');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("quickLogModal")).hide();
+    showAlert("Quick log added.", "success");
     await refresh();
   } catch (err) {
-    showAlert(err.message || 'Could not add quick log', 'danger');
+    showAlert(err.message || "Could not add quick log", "danger");
   }
 }
 
@@ -491,18 +524,25 @@ function buildSubtaskCheckboxes(subtasks = [], completed = []) {
 
   return normalizedSubtasks.map((sub) => {
     const checked = completedIds.includes(String(sub.id));
-    const amountText =
-      sub.amount !== null && sub.amount !== undefined && sub.amount !== ""
-        ? ` (${sub.amount}${sub.unit || ""})`
-        : "";
 
     return `
-      <label class="form-check border rounded p-2">
-        <input class="form-check-input me-2" type="checkbox" value="${escapeAttr(String(sub.id))}" ${checked ? 'checked' : ''}>
-        <span class="form-check-label">${escapeHtml(sub.title || "")}${escapeHtml(amountText)}</span>
+      <label class="form-check border rounded p-3">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <div class="d-flex gap-2">
+            <input class="form-check-input mt-1" type="checkbox" value="${escapeAttr(String(sub.id))}" ${checked ? "checked" : ""}>
+            <div>
+              <div class="form-check-label fw-semibold">${escapeHtml(sub.title || "")}</div>
+              ${sub.description ? `<div class="small text-muted mt-1">${escapeHtml(sub.description)}</div>` : ""}
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-1">
+            ${sub.required ? `<span class="badge text-bg-light border">Required</span>` : ""}
+            ${sub.photoRequired ? `<span class="badge text-bg-warning text-dark">Photo required</span>` : ""}
+          </div>
+        </div>
       </label>
     `;
-  }).join('');
+  }).join("");
 }
 
 function checkedValues(selector) {

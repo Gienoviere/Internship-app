@@ -127,7 +127,6 @@ router.get("/today", requireAuth, async (req, res) => {
           animalCategory: task.animalCategory || task.category || "Uncategorized",
           description: task.description,
           subtasks: normalizeSubtasks(task.subtasks),
-          photoRequired: Boolean(task.photoRequired),
           feedItemName: task.feedItem?.name || null,
           logged: Boolean(log),
           completed: log ? log.completed : false,
