@@ -112,12 +112,6 @@ router.get("/today", requireAuth, async (req, res) => {
         }
       },
       orderBy: [{ animalCategory: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
-      
-      assignedUsers: (task.assignments || []).map(a => ({
-        id: a.user?.id,
-        name: a.user?.name,
-        role: a.user?.role,
-      })),
     });
 
     const myLogs = await prisma.dailyLog.findMany({
@@ -134,6 +128,13 @@ router.get("/today", requireAuth, async (req, res) => {
       date,
       tasks: tasks.map((task) => {
         const log = byTaskId.get(task.id) || null;
+
+        const assignedUsers = (task.assignments || []).map(a => ({
+          id: a.user?.id,
+          name: a.user?.name,
+          role: a.user?.role,
+        }));
+
         return {
           taskId: task.id,
           taskName: task.name,
@@ -144,12 +145,15 @@ router.get("/today", requireAuth, async (req, res) => {
           feedItemName: task.feedItem?.name || null,
           logged: Boolean(log),
           completed: log ? log.completed : false,
-          
+
           notes: log ? log.notes : null,
           photoUrl: log?.photoUrl || null,
           completedSubtasks: Array.isArray(log?.completedSubtasks) ? log.completedSubtasks : [],
           logId: log ? log.id : null,
           approvalStatus: log?.approvalStatus || null,
+
+          assignedUsers,
+
           isDaily: Boolean(task.isDaily),
           sortOrder: task.sortOrder ?? 0,
           active: Boolean(task.active),

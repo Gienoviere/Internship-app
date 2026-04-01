@@ -192,7 +192,11 @@ async function loadDashboardSummary(date) {
       <tr>
         <td>${row.taskName}</td>
         <td>${statusBadge(row.status)}</td>
-        <td>${row.loggedBy?.length ? row.loggedBy.join(", ") : "—"}</td>
+        <td>${
+          row.assignedUsers?.length
+            ? row.assignedUsers.join(", ")
+            : "—"
+        }</td>
       </tr>
     `).join("");
   }

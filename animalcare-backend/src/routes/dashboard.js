@@ -38,9 +38,20 @@ router.get("/summary", requireAuth, async (req, res) => {
 
     const [tasks, logs, pendingApprovals] = await Promise.all([
       prisma.task.findMany({
-        where: { active: true, isDaily: true },
         orderBy: [{ sortOrder: "asc" }, { id: "asc" }],
+        where: { active: true, isDaily: true },
+        include: {
+          assignments: {
+            where: { active: true },
+            include: {
+              user: {
+                select: { id: true, name: true, email: true }
+              }
+            }
+          }
+        }
       }),
+
       prisma.dailyLog.findMany({
         where: { date: { gte: day, lt: next } },
         include: {
@@ -71,6 +82,10 @@ router.get("/summary", requireAuth, async (req, res) => {
       if (validLogs.some((l) => l.completed)) status = "Completed";
       else if (validLogs.length > 0) status = "Logged";
 
+      const assignedUsers = (task.assignments || [])
+        .map(a => a.user?.name || a.user?.email)
+        .filter(Boolean);
+
       const loggedBy = [...new Set(
         validLogs
           .map((l) => l.user?.name || l.user?.email)
@@ -82,6 +97,7 @@ router.get("/summary", requireAuth, async (req, res) => {
         taskName: task.name,
         status,
         loggedBy,
+        assignedUsers
       };
     });
 
