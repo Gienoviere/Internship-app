@@ -128,8 +128,6 @@ async function init() {
   state.me = meRes?.user || meRes || null;
   state.role = String(state.me?.role || "").toUpperCase();
   state.canManage = state.role === "ADMIN" || state.role === "SUPERVISOR";
-  state.role = String(state.me?.role || "").toUpperCase();
-  state.canManage = state.role === "ADMIN" || state.role === "SUPERVISOR";
 
   console.log("AUTH ME =", state.me);
   console.log("ROLE =", state.role, "CAN MANAGE =", state.canManage);
@@ -430,9 +428,9 @@ function openLogModal(taskId) {
   const logModal = document.getElementById("logModal3");
 
   if (
-    !logTaskId || !logId || !logTaskName || !logAnimalCategory ||
-    !logTaskDescription || !logQty || !logNotes || !logCompleted ||
-    !logSubtasks || !logModal
+  !logTaskId || !logId || !logTaskName || !logAnimalCategory ||
+  !logTaskDescription || !logNotes || !logCompleted ||
+  !logSubtasks || !logModal
   ) {
     showAlert("Log modal elements are missing from tasks.html", "danger");
     return;
