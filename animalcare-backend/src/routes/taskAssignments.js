@@ -110,6 +110,7 @@ router.get("/user/:userId", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), a
   }
 });
 
+// claiming a task to the linked account
 router.post(
   "/claim",
   requireAuth,
@@ -155,6 +156,7 @@ router.post(
   }
 );
 
+//my assignements linked to the account picking a task
 router.get(
   "/mine",
   requireAuth,
@@ -189,6 +191,7 @@ router.get(
   }
 );
 
+// selfrelease
 router.patch(
   "/:id/release",
   requireAuth,

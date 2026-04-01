@@ -321,13 +321,6 @@
         <!-- CARETAKER VIEW -->
         <div id="caretakerView" class="caretaker-only mt-0">
           <!-- Alert in het Nederlands -->
-          <div class="alert alert-warning d-flex align-items-center">
-            <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
-            <div>
-              <h5 class="alert-heading mb-1">Waarschuwing: Varkens niet gevoerd gisteren</h5>
-              <p class="mb-0">Controleer of varkens vandaag gevoerd zijn en log het.</p>
-            </div>
-          </div>
 
           <!--Photo section-->
           <div class="card mt-3">
@@ -403,7 +396,7 @@
                 </div>
               </div>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-3 manager-only">
               <div class="card card-compact shadow-sm">
                 <div class="card-body">
                   <div class="text-muted small">Inventory alerts</div>
@@ -459,7 +452,7 @@
           </div>
 
           <!-- Inventory warnings -->
-          <div class="card card-compact shadow-sm mb-3">
+          <div class="card card-compact shadow-sm mb-3 manager-only">
             <div class="card-body">
               <h5 class="mb-3"><i class="bi bi-exclamation-triangle me-2"></i>Inventory warnings</h5>
               <div class="table-responsive">
@@ -479,7 +472,7 @@
           </div>
 
           <!-- Admin & Supervisor panel -->
-          <div class="card card-compact shadow-sm">
+          <div class="card card-compact shadow-sm manager-only">
             <div class="card-body">
               <h5 class="mb-3"><i class="bi bi-shield me-2"></i>Admin & Supervisor</h5>
               <!-- Admin-only: missed tasks -->
@@ -513,7 +506,7 @@
           </div>
 
           <!-- Recent activity (static for caretaker) -->
-          <div class="card card-compact shadow-sm mt-4">
+          <div class="card card-compact shadow-sm mt-4 manager-only">
             <div class="card-body">
               <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Recent activity</h5>
               <div class="table-responsive">
@@ -611,6 +604,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script type="module" src="./js/main.js"></script>
   <script type="module" src="./js/modals.js"></script>
+  <script type="module" src="./js/ui.js"></script>
   <script type="module" src="./js/userRoleBadge.js"></script>
   <script type="module" src="./js/googlecalendarHandler.js"></script>
 </body>

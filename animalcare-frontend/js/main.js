@@ -55,8 +55,13 @@ export async function refreshAll() {
   updateRoleSpecificUI(view);
   setRoleBadge();
 
-  // Admin panels
-  if (currentUser?.role === "ADMIN" || view === "admin") {
+  // Admin & Supervisor panels
+if (
+  currentUser?.role === "ADMIN" ||
+  currentUser?.role === "SUPERVISOR" ||
+  view === "admin" ||
+  view === "supervisor"
+) {
   await loadAdminPanels(date);
 }
 
