@@ -51,9 +51,19 @@
             <li class="nav-item">
               <a class="nav-link text-dark" href="/manual/index.html"><i class="bi bi-book me-2"></i>Manual</a>
             </li>
-            <li class="nav-item mt-4"><h6 class="sidebar-heading px-3 text-muted">Snel acties</h6></li>
-            <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal"><i class="bi bi-plus-circle"></i> Snelle log</a></li>
-            <li class="nav-item"><a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#createTaskModal"><i class="bi bi-clipboard-plus"></i> Nieuwe taak</a></li>
+            <li class="nav-item mt-4 manager-only">
+              <h6 class="sidebar-heading px-3 text-muted">Snel acties</h6>
+            </li>
+            <li class="nav-item manager-only">
+              <a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#quickLogModal">
+                <i class="bi bi-plus-circle"></i> Snelle log
+              </a>
+            </li>
+            <li class="nav-item manager-only">
+              <a class="nav-link text-dark" href="#" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+                <i class="bi bi-clipboard-plus"></i> Nieuwe taak
+              </a>
+            </li>
           </ul>
         </div>
       </aside>
@@ -67,16 +77,29 @@
 
           <div class="d-flex flex-wrap gap-2 align-items-center">
             <input type="date" class="form-control form-control-sm" id="globalDate3" style="max-width:180px;">
-            <select class="form-select form-select-sm" id="categoryFilter3" style="max-width:220px;">
+
+            <select class="form-select form-select-sm manager-only" id="categoryFilter3" style="max-width:220px;">
               <option value="">All animal categories</option>
             </select>
-            <button class="btn btn-outline-primary btn-sm" id="btnRefresh3">Refresh</button>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#createTaskModal">Create task</button>
+
+            <button class="btn btn-outline-primary btn-sm manager-only" id="btnRefresh3">Refresh</button>
+
+            <button class="btn btn-primary btn-sm manager-only" data-bs-toggle="modal" data-bs-target="#createTaskModal">
+              Create task
+            </button>
           </div>
-        </div>
 
         <div id="alertBox3" class="alert d-none"></div>
-        <div id="taskSummary3" class="row g-3 mb-3"></div>
+        <div id="taskSummary3" class="row g-3 mb-3 manager-only"></div>
+        <div class="worker-only mb-3">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <h5 class="mb-1">Available tasks for today</h5>
+              <p class="text-muted small mb-3">Pick up a task created by Admin or Supervisor, then log it when you complete it.</p>
+              <div id="availableTasks3" class="d-grid gap-2"></div>
+            </div>
+          </div>
+        </div>
         <div id="taskGroups3" class="d-grid gap-3"></div>
 
         <div class="card shadow-sm supervisor-only mt-3">
@@ -206,6 +229,9 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-primary" id="btnSaveLog3">Save log</button>
+          <button type="button" class="btn btn-outline-warning" id="btnOpenObservationFromLog3">
+            Add observation for this task
+          </button>
         </div>
       </div>
     </div>

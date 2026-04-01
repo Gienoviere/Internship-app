@@ -8,6 +8,7 @@ const state = {
   tasks: [],
   categoryFilter: '',
   feedItems: [],
+  availableTasks: [],
 };
 
 function isManager() {
@@ -165,6 +166,15 @@ function wireEvents() {
       openTaskObservationModal(taskId);
       return;
     }
+
+    const claimBtn = event.target.closest('[data-action="claim-task"]');
+    if (claimBtn) {
+      const taskId = Number(claimBtn.dataset.taskId);
+      await onClaimTask(taskId);
+      return;
+    }
+
+
   });
 
   document.getElementById("btnUpdateTask3")?.addEventListener("click", onUpdateTask);
@@ -206,6 +216,7 @@ async function refresh() {
 
   console.log("TASKS TODAY =", state.tasks);
 
+  await loadAvailableTasksForWorker();
   fillCategoryFilters();
   renderSummary();
   renderTasks();
@@ -352,7 +363,7 @@ function renderTaskCard(task) {
 
           <div class="mt-auto pt-3 d-flex gap-2 flex-wrap">
             <button class="btn btn-primary btn-sm" data-action="open-log" data-task-id="${task.taskId}">
-              ${task.logged ? 'Edit log' : 'Log task'}
+              ${task.logged ? 'Continue task log' : 'Open task'}
             </button>
 
             <button class="btn btn-outline-warning btn-sm" data-action="open-observation" data-task-id="${task.taskId}">
@@ -365,6 +376,12 @@ function renderTaskCard(task) {
               </button>
               <button class="btn btn-outline-danger btn-sm" data-action="delete-task" data-task-id="${task.taskId}">
                 Delete
+              </button>
+            ` : ""}
+
+            ${!isManager() && !task.logged ? `
+              <button class="btn btn-outline-secondary btn-sm" data-action="release-task" data-task-id="${task.taskId}">
+                Release
               </button>
             ` : ""}
           </div>
@@ -850,5 +867,63 @@ async function onCreateTaskObservation() {
     showAlert("Observation created and linked to task.", "success");
   } catch (err) {
     showAlert(err.message || "Could not create observation", "danger");
+  }
+}
+
+// load tasks made by admin and supervisor to the users
+async function loadAvailableTasksForWorker() {
+  if (isManager()) return;
+
+  const allTasks = await api("/tasks");
+  const pickedTaskIds = new Set(state.tasks.map(t => Number(t.taskId)));
+
+  state.availableTasks = (allTasks || [])
+    .filter(task => task.active !== false)
+    .filter(task => task.isDaily !== false)
+    .filter(task => !pickedTaskIds.has(Number(task.id)));
+
+  renderAvailableTasks();
+}
+
+// render the tasks every day
+function renderAvailableTasks() {
+  const wrap = document.getElementById("availableTasks3");
+  if (!wrap) return;
+
+  if (isManager()) {
+    wrap.innerHTML = "";
+    return;
+  }
+
+  if (!state.availableTasks.length) {
+    wrap.innerHTML = `<div class="text-muted small">No available tasks to pick up right now.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = state.availableTasks.map(task => `
+    <div class="border rounded p-3 d-flex justify-content-between align-items-start gap-3">
+      <div>
+        <div class="fw-semibold">${escapeHtml(task.name || task.taskName || "Task")}</div>
+        <div class="small text-muted">${escapeHtml(task.animalCategory || task.category || "Uncategorized")}</div>
+        ${task.description ? `<div class="small mt-2">${escapeHtml(task.description)}</div>` : ""}
+      </div>
+      <button class="btn btn-sm btn-primary" data-action="claim-task" data-task-id="${task.id}">
+        Pick up task
+      </button>
+    </div>
+  `).join("");
+}
+
+async function onClaimTask(taskId) {
+  try {
+    await api("/task-assignments/claim", {
+      method: "POST",
+      json: { taskId },
+    });
+
+    showAlert("Task picked up.", "success");
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || "Could not pick up task", "danger");
   }
 }

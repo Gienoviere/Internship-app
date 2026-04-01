@@ -89,7 +89,7 @@ router.get("/", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/", requireAuth, async (req, res) => {
+router.post("/", requireAuth, requireRole(["ADMIN", "SUPERVISOR"]), async (req, res) => {
   try {
     const {
       name,
