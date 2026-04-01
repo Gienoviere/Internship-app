@@ -37,6 +37,26 @@ const els = {
   btnSaveLog: document.getElementById('btnSaveLog3'),
 };
 
+function applyPageRoleVisibility() {
+  const role = String(state.role || "").toUpperCase();
+  const isAdmin = role === "ADMIN";
+  const isSupervisor = role === "SUPERVISOR";
+  const isManager = isAdmin || isSupervisor;
+  const isWorker = role === "FARMER" || role === "VOLUNTEER";
+
+  document.querySelectorAll(".manager-only").forEach(el => {
+    el.classList.toggle("d-none", !isManager);
+  });
+
+  document.querySelectorAll(".supervisor-only").forEach(el => {
+    el.classList.toggle("d-none", !isSupervisor);
+  });
+
+  document.querySelectorAll(".worker-only").forEach(el => {
+    el.classList.toggle("d-none", !isWorker);
+  });
+}
+
 function normalizeFrontendSubtask(subtask, index = 0) {
   if (!subtask) {
     return {
@@ -102,9 +122,12 @@ init().catch((err) => showAlert(err.message || 'Failed to load page', 'danger'))
 
 async function init() {
   wireEvents();
+  applyPageRoleVisibility();
 
   const meRes = await api("/auth/me");
   state.me = meRes?.user || meRes || null;
+  state.role = String(state.me?.role || "").toUpperCase();
+  state.canManage = state.role === "ADMIN" || state.role === "SUPERVISOR";
   state.role = String(state.me?.role || "").toUpperCase();
   state.canManage = state.role === "ADMIN" || state.role === "SUPERVISOR";
 
@@ -220,6 +243,7 @@ async function refresh() {
   fillCategoryFilters();
   renderSummary();
   renderTasks();
+  applyPageRoleVisibility();
 }
 
 function fillCategoryFilters() {
