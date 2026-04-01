@@ -8,9 +8,9 @@ export async function loadTasksToday(date) {
   state.last.tasksToday = data;
 
   const tasks = data.tasks || [];
-  setText("tasksCount3", `${tasks.length} taken`);
+  setText("kpiTasks3", String(tasks.length));
 
-  const tbody = $("tasksTable3");
+  const tbody = $("tasksTbody3");
   if (!tbody) return;
 
   tbody.innerHTML = "";

@@ -150,6 +150,17 @@ document.addEventListener("DOMContentLoaded", async () => {
       setAlert("danger", e.message || "Failed to send summary email.");
     }
   });
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-open-task]");
+    if (!btn) return;
+
+    const taskId = Number(btn.dataset.openTask);
+    if (!taskId) return;
+
+    window.location.href = `/Tasks/tasks.html?taskId=${taskId}`;
+  });
+
 });
 
 // Summary of the dashboard
@@ -202,6 +213,11 @@ async function loadDashboardSummary(date) {
             ? row.assignedUsers.join(", ")
             : "—"
         }</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary" data-open-task="${row.taskId}">
+            View
+          </button>
+        </td>
       </tr>
     `).join("");
   }
@@ -213,7 +229,11 @@ async function loadDashboardSummary(date) {
       <td>${row.taskName}</td>
       <td>${row.assignedUsers?.length ? row.assignedUsers.join(", ") : "—"}</td>
       <td>${statusBadge(row.status)}</td>
-      <td><button class="btn btn-sm btn-outline-secondary" disabled>View</button></td>
+      <td>
+        <button class="btn btn-sm btn-outline-primary" data-open-task="${row.taskId}">
+          View
+        </button>
+      </td>
     </tr>
   `).join("");
 }
