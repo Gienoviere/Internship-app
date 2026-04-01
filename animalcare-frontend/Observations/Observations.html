@@ -23,10 +23,7 @@
     <div class="container-fluid">
       <span class="navbar-brand fw-semibold">AnimalCare</span>
 
-      <div class="d-flex align-items-center gap-2 flex-wrap">
-        <label for="globalDateObs" style="width: 100px;" class="text-white-50 small mb-0">Date</label>
-        <input type="date" class="form-control form-control-sm" id="globalDateObs" style="max-width: 140px;">
-        <button class="btn btn-outline-light btn-sm" id="btnRefreshObs">Refresh</button>
+      <div class="d-flex align-items-center gap-2">
         <span class="badge text-bg-secondary" id="userRoleBadgeObs">Not logged in</span>
         <button class="btn btn-outline-light btn-sm d-none" id="btnLogout3">Logout</button>
       </div>
@@ -48,10 +45,15 @@
       </aside>
 
       <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 pt-3">
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
           <div>
             <h1 class="h2 mb-0">Observations</h1>
             <p class="text-muted mb-0">Report issues with animals, food, care tasks, or daily farm events</p>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <input type="date" class="form-control form-control-sm" id="globalDateObs" style="max-width: 160px;">
+            <button class="btn btn-outline-primary btn-sm" id="btnRefreshObs">Refresh</button>
           </div>
         </div>
 
