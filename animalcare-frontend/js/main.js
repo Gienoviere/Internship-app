@@ -202,16 +202,16 @@ async function loadDashboardSummary(date) {
   }
 
   // admin overview table
-  if ($("adminOverviewTable")) {
-    $("adminOverviewTable").innerHTML = overview.map((row) => `
-      <tr>
-        <td>${row.taskName}</td>
-        <td>${row.loggedBy?.length ? row.loggedBy.join(", ") : "—"}</td>
-        <td>${statusBadge(row.status)}</td>
-        <td><button class="btn btn-sm btn-outline-secondary" disabled>View</button></td>
-      </tr>
-    `).join("");
-  }
+ if ($("adminOverviewTable")) {
+  $("adminOverviewTable").innerHTML = overview.map((row) => `
+    <tr>
+      <td>${row.taskName}</td>
+      <td>${row.assignedUsers?.length ? row.assignedUsers.join(", ") : "—"}</td>
+      <td>${statusBadge(row.status)}</td>
+      <td><button class="btn btn-sm btn-outline-secondary" disabled>View</button></td>
+    </tr>
+  `).join("");
+}
 
   // recent activity
   if ($("recentActivityTable3")) {
