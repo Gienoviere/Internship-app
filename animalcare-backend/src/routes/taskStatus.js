@@ -100,10 +100,24 @@ router.get("/today", requireAuth, async (req, res) => {
 
     const tasks = await prisma.task.findMany({
       where: taskWhere,
-      include: {
+        include: {
         feedItem: { select: { name: true } },
+        assignments: {
+          where: { active: true },
+          include: {
+            user: {
+              select: { id: true, name: true, role: true }
+            }
+          }
+        }
       },
       orderBy: [{ animalCategory: "asc" }, { sortOrder: "asc" }, { id: "asc" }],
+      
+      assignedUsers: (task.assignments || []).map(a => ({
+        id: a.user?.id,
+        name: a.user?.name,
+        role: a.user?.role,
+      })),
     });
 
     const myLogs = await prisma.dailyLog.findMany({

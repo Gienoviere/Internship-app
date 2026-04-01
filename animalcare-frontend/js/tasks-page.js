@@ -360,7 +360,7 @@ function renderTaskCard(task) {
     : '<div class="small text-muted mt-2">No photo uploaded yet</div>';
 
   return `
-    <div class="col-12 col-xl-6">
+    <div class="${isManager() ? 'col-12 col-xxl-6' : 'col-12'}">
       <div class="card task-card h-100 border ${task.completed ? 'border-success' : ''}">
         <div class="card-body d-flex flex-column">
           <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
@@ -375,10 +375,16 @@ function renderTaskCard(task) {
 
           <p class="text-muted small mb-2">${escapeHtml(task.description || 'No description added yet.')}</p>
 
+          ${isManager() ? `<div class="small mb-2"><strong>Picked by:</strong> ${escapeHtml(assignedText)}</div>` : ""}
+
           <div class="mb-2">
             <div class="small fw-semibold mb-1">Subcomponents</div>
             ${subtaskBadges}
           </div>
+
+          const assignedText = Array.isArray(task.assignedUsers) && task.assignedUsers.length
+            ? task.assignedUsers.map(u => u.name).join(", ")
+            : "Nobody assigned yet";
 
           <div class="small mb-2"><strong>Notes:</strong> ${escapeHtml(task.notes || 'None')}</div>
           ${photoHtml}
