@@ -329,35 +329,39 @@ function renderTaskCard(task) {
   const completedIds = Array.isArray(task.completedSubtasks) ? task.completedSubtasks.map(String) : [];
 
   const subtaskBadges = subtasks.length
-  ? subtasks.map((subObj) => {
-      const done = completedIds.includes(String(subObj.id));
-      return `
-        <div class="border rounded p-2 mb-2 ${done ? 'bg-light' : ''}">
-          <div class="d-flex justify-content-between align-items-start gap-2">
-            <div>
-              <div class="fw-semibold ${done ? 'text-decoration-line-through text-muted' : ''}">
-                ${escapeHtml(subObj.title || "")}
+    ? subtasks.map((subObj) => {
+        const done = completedIds.includes(String(subObj.id));
+        return `
+          <div class="border rounded p-2 mb-2 ${done ? 'bg-light' : ''}">
+            <div class="d-flex justify-content-between align-items-start gap-2">
+              <div>
+                <div class="fw-semibold ${done ? 'text-decoration-line-through text-muted' : ''}">
+                  ${escapeHtml(subObj.title || "")}
+                </div>
+                ${
+                  subObj.description
+                    ? `<div class="small text-muted mt-1">${escapeHtml(subObj.description)}</div>`
+                    : ""
+                }
               </div>
-              ${
-                subObj.description
-                  ? `<div class="small text-muted mt-1">${escapeHtml(subObj.description)}</div>`
-                  : ""
-              }
-            </div>
-            <div class="d-flex flex-wrap gap-1">
-              ${subObj.required ? `<span class="badge text-bg-light border">Required</span>` : ""}
-              ${subObj.photoRequired ? `<span class="badge text-bg-warning text-dark">Photo required</span>` : ""}
-              ${done ? `<span class="badge text-bg-success">Done</span>` : ""}
+              <div class="d-flex flex-wrap gap-1">
+                ${subObj.required ? `<span class="badge text-bg-light border">Required</span>` : ""}
+                ${subObj.photoRequired ? `<span class="badge text-bg-warning text-dark">Photo required</span>` : ""}
+                ${done ? `<span class="badge text-bg-success">Done</span>` : ""}
+              </div>
             </div>
           </div>
-        </div>
-      `;
-    }).join("")
-  : '<span class="text-muted small">No subcomponents yet</span>';
+        `;
+      }).join("")
+    : '<span class="text-muted small">No subcomponents yet</span>';
 
   const photoHtml = task.photoUrl
     ? `<img src="${escapeAttr(task.photoUrl)}" class="img-fluid rounded border mt-2" alt="Task photo">`
     : '<div class="small text-muted mt-2">No photo uploaded yet</div>';
+
+  const assignedText = Array.isArray(task.assignedUsers) && task.assignedUsers.length
+    ? task.assignedUsers.map((u) => u.name).join(", ")
+    : "Nobody assigned yet";
 
   return `
     <div class="${isManager() ? 'col-12 col-xxl-6' : 'col-12'}">
@@ -381,10 +385,6 @@ function renderTaskCard(task) {
             <div class="small fw-semibold mb-1">Subcomponents</div>
             ${subtaskBadges}
           </div>
-
-          const assignedText = Array.isArray(task.assignedUsers) && task.assignedUsers.length
-            ? task.assignedUsers.map(u => u.name).join(", ")
-            : "Nobody assigned yet";
 
           <div class="small mb-2"><strong>Notes:</strong> ${escapeHtml(task.notes || 'None')}</div>
           ${photoHtml}
