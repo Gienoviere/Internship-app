@@ -401,6 +401,7 @@
           <h5 class="modal-title">Edit task</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
+
         <div class="modal-body">
           <input type="hidden" id="editTaskId3">
 
@@ -516,6 +517,36 @@
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button class="btn btn-primary" id="btnCreateTaskObservation3">Save observation</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="assignTaskModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Assign task</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="assignTaskId3">
+
+          <div class="mb-3">
+            <label class="form-label">Task</label>
+            <input type="text" class="form-control" id="assignTaskName3" readonly>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Assign to</label>
+            <select class="form-select" id="assignUserId3">
+              <option value="">Select user</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-primary" id="btnAssignTask3">Assign</button>
         </div>
       </div>
     </div>

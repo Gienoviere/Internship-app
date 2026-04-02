@@ -138,6 +138,10 @@ async function init() {
   state.feedItems = await api("/inventory/feed-items");
   addSubtaskRow("createTaskSubtasksWrap3", state.feedItems || []);
 
+  if (isManager()) {
+  await loadAssignableUsers();
+  }
+
   await refresh();
 }
 
@@ -195,6 +199,13 @@ function wireEvents() {
       return;
     }
 
+    // assign task button code
+    const assignBtn = event.target.closest('[data-action="assign-task"]');
+    if (assignBtn) {
+      const taskId = Number(assignBtn.dataset.taskId);
+      openAssignTaskModal(taskId);
+      return;
+    }
 
   });
 
@@ -222,6 +233,9 @@ function wireEvents() {
   if (!taskId) return;
   openTaskObservationModal(taskId);
   });
+
+  // assign tasks
+  document.getElementById("btnAssignTask3")?.addEventListener("click", onAssignTask);
 }
 
 async function refresh() {
@@ -404,6 +418,9 @@ function renderTaskCard(task) {
               </button>
               <button class="btn btn-outline-danger btn-sm" data-action="delete-task" data-task-id="${task.taskId}">
                 Delete
+              </button>
+              <button class="btn btn-outline-primary btn-sm" data-action="assign-task" data-task-id="${task.taskId}">
+                Assign
               </button>
             ` : ""}
 
@@ -953,5 +970,57 @@ async function onClaimTask(taskId) {
     await refresh();
   } catch (err) {
     showAlert(err.message || "Could not pick up task", "danger");
+  }
+}
+
+// load up all users
+async function loadAssignableUsers() {
+  const users = await api("/users");
+  state.assignableUsers = (users || []).filter(u =>
+    ["FARMER", "VOLUNTEER"].includes(String(u.role || "").toUpperCase())
+  );
+}
+
+// assign task to accou t
+function openAssignTaskModal(taskId) {
+  const task = state.tasks.find(t => t.taskId === taskId);
+  if (!task) return;
+
+  document.getElementById("assignTaskId3").value = task.taskId;
+  document.getElementById("assignTaskName3").value = task.taskName || "";
+
+  const select = document.getElementById("assignUserId3");
+  if (select) {
+    select.innerHTML = [
+      `<option value="">Select user</option>`,
+      ...(state.assignableUsers || []).map(user =>
+        `<option value="${user.id}">${escapeHtml(user.name)} (${escapeHtml(user.role)})</option>`
+      )
+    ].join("");
+  }
+
+  bootstrap.Modal.getOrCreateInstance(document.getElementById("assignTaskModal")).show();
+}
+
+// save assignment
+async function onAssignTask() {
+  try {
+    const taskId = Number(document.getElementById("assignTaskId3").value);
+    const userId = Number(document.getElementById("assignUserId3").value);
+
+    if (!taskId || !userId) {
+      throw new Error("Select a user first.");
+    }
+
+    await api("/task-assignments", {
+      method: "POST",
+      json: { taskId, userId },
+    });
+
+    bootstrap.Modal.getOrCreateInstance(document.getElementById("assignTaskModal")).hide();
+    showAlert("Task assigned.", "success");
+    await refresh();
+  } catch (err) {
+    showAlert(err.message || "Could not assign task", "danger");
   }
 }
